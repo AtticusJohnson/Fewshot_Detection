@@ -452,7 +452,7 @@ def load_conv_bn(buf, start, conv_model, bn_model):
     bn_model.weight.data.copy_(torch.from_numpy(buf[start:start+num_b]));   start = start + num_b
     bn_model.running_mean.copy_(torch.from_numpy(buf[start:start+num_b]));  start = start + num_b
     bn_model.running_var.copy_(torch.from_numpy(buf[start:start+num_b]));   start = start + num_b
-    conv_model.weight.data.copy_(torch.from_numpy(buf[start:start+num_w])); start = start + num_w 
+    conv_model.weight.data.copy_(torch.from_numpy(buf[start:start+num_w]).reshape(conv_model.weight.data.shape)); start = start + num_w
     return start
 
 def save_conv_bn(fp, conv_model, bn_model):
@@ -482,7 +482,7 @@ def save_fc(fp, fc_model):
 
 if __name__ == '__main__':
     import sys
-    blocks = parse_cfg('cfg/yolo.cfg')
+    blocks = parse_cfg('cfgs/yolo.cfgs')
     if len(sys.argv) == 2:
         blocks = parse_cfg(sys.argv[1])
     print_cfg(blocks)

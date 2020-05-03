@@ -8,7 +8,7 @@ from PIL import Image
 from utils import image2torch, convert2cpu
 from torch.autograd import Variable
 
-cfgfile = 'face4.1re_95.91.cfg'
+cfgfile = 'face4.1re_95.91.cfgs'
 weightfile = 'face4.1re_95.91.conv.15'
 imgpath = 'data/train/images/10002.png'
 labpath = imgpath.replace('images', 'labels').replace('JPEGImages', 'labels').replace('.jpg', '.txt').replace('.png','.txt')

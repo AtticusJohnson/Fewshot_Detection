@@ -1,5 +1,6 @@
 from __future__ import print_function
 import sys
+from tqdm import tqdm
 if len(sys.argv) != 5:
     print('Usage:')
     print('python train.py datacfg darknetcfg learnetcfg weightfile')
@@ -58,7 +59,7 @@ steps         = [float(step) for step in net_options['steps'].split(',')]
 scales        = [float(scale) for scale in net_options['scales'].split(',')]
 
 #Train parameters
-use_cuda      = True
+use_cuda      = False #####################################################################
 seed          = int(time.time())
 eps           = 1e-5
 dot_interval  = 70  # batches
@@ -85,7 +86,7 @@ model       = Darknet(darknetcfg, learnetcfg)
 region_loss = model.loss
 
 model.load_weights(weightfile)
-model.print_network()
+# model.print_network()
 
 
 ###################################################
@@ -96,32 +97,33 @@ trainlist         = dataset.build_dataset(data_options)
 nsamples          = len(trainlist)
 init_width        = model.width
 init_height       = model.height
-init_epoch        = 0 if cfg.tuning else model.seen/nsamples
+init_epoch        = 0 if cfg.tuning else int(model.seen/nsamples)
 max_epochs        = max_batches*batch_size/nsamples+1
 max_epochs        = int(math.ceil(cfg.max_epoch*1./cfg.repeat)) if cfg.tuning else max_epochs 
-print(cfg.repeat, nsamples, max_batches, batch_size)
-print(num_workers)
+# print(cfg.repeat, nsamples, max_batches, batch_size)
+# print(num_workers)
 
-kwargs = {'num_workers': num_workers, 'pin_memory': True} if use_cuda else {}
-test_loader = torch.utils.data.DataLoader(
-    dataset.listDataset(testlist, shape=(init_width, init_height),
-                   shuffle=False,
-                   transform=transforms.Compose([
-                       transforms.ToTensor(),
-                   ]), train=False),
-    batch_size=batch_size, shuffle=False, **kwargs)
-
-test_metaset = dataset.MetaDataset(metafiles=metadict, train=True)
-test_metaloader = torch.utils.data.DataLoader(
-    test_metaset,
-    batch_size=test_metaset.batch_size,
-    shuffle=False,
-    num_workers=num_workers//2,
-    pin_memory=True
-)
+kwargs = {'num_workers': num_workers, 'pin_memory': True} if use_cuda else {'num_workers': 0, 'pin_memory': False}
+# test_loader = torch.utils.data.DataLoader(
+#     dataset.listDataset(testlist, shape=(init_width, init_height),
+#                    shuffle=False,
+#                    transform=transforms.Compose([
+#                        transforms.ToTensor(),
+#                    ]), train=False),
+#     batch_size=batch_size, shuffle=False, **kwargs)
+#
+# test_metaset = dataset.MetaDataset(metafiles=metadict, train=True)
+# test_metaloader = torch.utils.data.DataLoader(
+#     test_metaset,
+#     batch_size=test_metaset.batch_size,
+#     shuffle=False,
+#     # num_workers=num_workers//2,  ########################################################################
+#     num_workers=0,
+#     pin_memory=True
+# )
 
 # Adjust learning rate
-factor = len(test_metaset.classes)
+# factor = len(test_metaset.classes)
 if cfg.neg_ratio == 'full':
     factor = 15.
 elif cfg.neg_ratio == 1:
@@ -131,7 +133,7 @@ elif cfg.neg_ratio == 0:
 elif cfg.neg_ratio == 5:
     factor = 8.0
 
-print('factor:', factor)
+# print('factor:', factor)
 learning_rate /= factor
 
 if use_cuda:
@@ -162,6 +164,7 @@ def adjust_learning_rate(optimizer, batch):
         param_group['lr'] = lr/batch_size
     return lr
 
+
 def train(epoch):
     global processed_batches
     t0 = time.time()
@@ -174,6 +177,7 @@ def train(epoch):
         dataset.listDataset(trainlist, shape=(init_width, init_height),
                        shuffle=False,
                        transform=transforms.Compose([
+                           # transforms.Resize([448, 448]),
                            transforms.ToTensor(),
                        ]), 
                        train=True, 
@@ -181,15 +185,17 @@ def train(epoch):
                        batch_size=batch_size,
                        num_workers=num_workers),
         batch_size=batch_size, shuffle=False, **kwargs)
-
-    metaset = dataset.MetaDataset(metafiles=metadict, train=True)
+    # print("block b nw is: ", batch_size, num_workers)
+    metaset = dataset.MetaDataset(metafiles=metadict, train=True, num_workers=num_workers)
     metaloader = torch.utils.data.DataLoader(
         metaset,
         batch_size=metaset.batch_size,
+        # batch_size=batch_size,
         shuffle=False,
         num_workers=num_workers,
-        pin_memory=True
+        pin_memory=False ####################
     )
+    # print("meta b nw is: ", batch_size, num_workers)
     metaloader = iter(metaloader)
 
     lr = adjust_learning_rate(optimizer, processed_batches)
@@ -198,7 +204,8 @@ def train(epoch):
     model.train()
     t1 = time.time()
     avg_time = torch.zeros(9)
-    for batch_idx, (data, target) in enumerate(train_loader):
+    for batch_idx, (data, target) in enumerate(tqdm(train_loader)):
+
         metax, mask = metaloader.next()
         t2 = time.time()
         adjust_learning_rate(optimizer, processed_batches)
@@ -215,10 +222,14 @@ def train(epoch):
         t4 = time.time()
         optimizer.zero_grad()
         t5 = time.time()
-        output = model(data, metax, mask)
+        # print("input data shape: ", [data.shape, metax.shape, mask.shape])
+        output = model(data.float(), metax.float(), mask.float())  # torch.Size([1, 30, 13, 13])
+        # print("output shape: ", output.shape)
         t6 = time.time()
         region_loss.seen = region_loss.seen + data.data.size(0)
-        loss = region_loss(output, target)
+        # ("target shape :", target.shape)
+        loss = region_loss(output, target.float(), use_cuda)
+
         t7 = time.time()
         loss.backward()
         t8 = time.time()
@@ -245,7 +256,7 @@ def train(epoch):
             print('            step : %f' % (avg_time[7]/(batch_idx)))
             print('           total : %f' % (avg_time[8]/(batch_idx)))
         t1 = time.time()
-    print('')
+    # print('')
     t1 = time.time()
     logging('training with %f samples/s' % (len(train_loader.dataset)/(t1-t0)))
 
@@ -255,72 +266,75 @@ def train(epoch):
         cur_model.save_weights('%s/%06d.weights' % (backupdir, epoch+1))
 
 
-def test(epoch):
-    def truths_length(truths):
-        for i in range(50):
-            if truths[i][1] == 0:
-                return i
-
-    model.eval()
-    if ngpus > 1:
-        cur_model = model.module
-    else:
-        cur_model = model
-    num_classes = cur_model.num_classes
-    anchors     = cur_model.anchors
-    num_anchors = cur_model.num_anchors
-    total       = 0.0
-    proposals   = 0.0
-    correct     = 0.0
-
-    _test_metaloader = iter(test_metaloader)
-    for batch_idx, (data, target) in enumerate(test_loader):
-        metax, mask = _test_metaloader.next()
-        if use_cuda:
-            data = data.cuda()
-            metax = metax.cuda()
-            mask = mask.cuda()
-        data = Variable(data, volatile=True)
-        metax = Variable(metax, volatile=True)
-        mask = Variable(mask, volatile=True)
-        output = model(data, metax, mask).data
-        all_boxes = get_region_boxes(output, conf_thresh, num_classes, anchors, num_anchors)
-        for i in range(output.size(0)):
-            boxes = all_boxes[i]
-            boxes = nms(boxes, nms_thresh)
-            truths = target[i].view(-1, 5)
-            num_gts = truths_length(truths)
-     
-            total = total + num_gts
-    
-            for i in range(len(boxes)):
-                if boxes[i][4] > conf_thresh:
-                    proposals = proposals+1
-
-            for i in range(num_gts):
-                box_gt = [truths[i][1], truths[i][2], truths[i][3], truths[i][4], 1.0, 1.0, truths[i][0]]
-                best_iou = 0
-                best_j = -1
-                for j in range(len(boxes)):
-                    iou = bbox_iou(box_gt, boxes[j], x1y1x2y2=False)
-                    if iou > best_iou:
-                        best_j = j
-                        best_iou = iou
-                if best_iou > iou_thresh and boxes[best_j][6] == box_gt[6]:
-                    correct = correct+1
-
-    precision = 1.0*correct/(proposals+eps)
-    recall = 1.0*correct/(total+eps)
-    fscore = 2.0*precision*recall/(precision+recall+eps)
-    logging("precision: %f, recall: %f, fscore: %f" % (precision, recall, fscore))
+# def test(epoch):
+#     def truths_length(truths):
+#         for i in range(50):
+#             if truths[i][1] == 0:
+#                 return i
+#
+#     model.eval()
+#     if ngpus > 1:
+#         cur_model = model.module
+#     else:
+#         cur_model = model
+#     num_classes = cur_model.num_classes
+#     anchors     = cur_model.anchors
+#     num_anchors = cur_model.num_anchors
+#     total       = 0.0
+#     proposals   = 0.0
+#     correct     = 0.0
+#
+#     _test_metaloader = iter(test_metaloader)
+#     for batch_idx, (data, target) in enumerate(test_loader):
+#         metax, mask = _test_metaloader.next()
+#         if use_cuda:
+#             data = data.cuda()
+#             metax = metax.cuda()
+#             mask = mask.cuda()
+#         data = Variable(data, volatile=True)
+#         metax = Variable(metax, volatile=True)
+#         mask = Variable(mask, volatile=True)
+#         output = model(data, metax, mask).data
+#         all_boxes = get_region_boxes(output, conf_thresh, num_classes, anchors, num_anchors)
+#         for i in range(output.size(0)):
+#             boxes = all_boxes[i]
+#             boxes = nms(boxes, nms_thresh)
+#             truths = target[i].view(-1, 5)
+#             num_gts = truths_length(truths)
+#
+#             total = total + num_gts
+#
+#             for i in range(len(boxes)):
+#                 if boxes[i][4] > conf_thresh:
+#                     proposals = proposals+1
+#
+#             for i in range(num_gts):
+#                 box_gt = [truths[i][1], truths[i][2], truths[i][3], truths[i][4], 1.0, 1.0, truths[i][0]]
+#                 best_iou = 0
+#                 best_j = -1
+#                 for j in range(len(boxes)):
+#                     iou = bbox_iou(box_gt, boxes[j], x1y1x2y2=False)
+#                     if iou > best_iou:
+#                         best_j = j
+#                         best_iou = iou
+#                 if best_iou > iou_thresh and boxes[best_j][6] == box_gt[6]:
+#                     correct = correct+1
+#
+#     precision = 1.0*correct/(proposals+eps)
+#     recall = 1.0*correct/(total+eps)
+#     fscore = 2.0*precision*recall/(precision+recall+eps)
+#     logging("precision: %f, recall: %f, fscore: %f" % (precision, recall, fscore))
 
 
 
 evaluate = False
 if evaluate:
     logging('evaluating ...')
-    test(0)
+    # test(0)
 else:
-    for epoch in range(init_epoch, max_epochs):
+    for epoch in range(init_epoch, int(max_epochs)):
+        print("<=====================================================>")
+        print("<==================={}th epoch of {}====================>".format(epoch, int(max_epochs)))
+        print("<=====================================================>")
         train(epoch)
         # test(epoch)

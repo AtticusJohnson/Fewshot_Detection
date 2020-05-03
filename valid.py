@@ -12,7 +12,7 @@ import os
 def valid(datacfg, cfgfile, weightfile, outfile):
     options = read_data_cfg(datacfg)
     valid_images = options['valid']
-    # backup = cfg.backup
+    # backup = cfgs.backup
     backup = weightfile.split('/')[-2]
     ckpt = weightfile.split('/')[-1].split('.')[0]
     prefix = 'results/' + backup.split('/')[-1] + '/e' + ckpt

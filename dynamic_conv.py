@@ -126,14 +126,17 @@ def dynamic_conv2d(is_first, partial=None):
             assert self.is_first is not None, 'Please set the state of DynamicConv2d first.'
             # pdb.set_trace()
             input, dynamic_weight = inputs
+            # print("tuple(dynamic_weight.size()): ", tuple(dynamic_weight.size()))
             assert tuple(dynamic_weight.size())[-2:] == self.kernel_size
             assert dynamic_weight.size(1) % input.size(1) == 0
             n_cls = dynamic_weight.size(0)
+
 
             # Take care of partial prediction
             if self.partial is not None:
                 shared_weight = self.weight.repeat(n_cls, 1, 1, 1)
                 dynamic_weight = torch.cat([shared_weight, dynamic_weight], dim=1)
+
 
             if self.is_first:
                 # Get batch size
@@ -154,10 +157,10 @@ def dynamic_conv2d(is_first, partial=None):
             groups = n_cls * n_channels // group_size
             # Reshape dynamic_weight tensor from size (N, C, H, W) to (N*C, 1, H, W)
             dynamic_weight = dynamic_weight.view(-1, group_size, dynamic_weight.size(2), dynamic_weight.size(3))
-
+            # print("input.shape, dynamic_weight.shape: ", input.shape, dynamic_weight.shape)
             conv_rlt = F.conv2d(input, dynamic_weight, self.bias, self.stride,
                             self.padding, self.dilation, groups)
-
+            # print("conv_rlt.shape: ", conv_rlt.shape)
             feat_size = (conv_rlt.size(-2), conv_rlt.size(-1))
             conv_rlt = conv_rlt.view(-1, n_channels, *feat_size)
 

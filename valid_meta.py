@@ -15,7 +15,7 @@ def valid(datacfg, darknetcfg, learnetcfg, weightfile, outfile):
     valid_images = options['valid']
     metadict = options['meta']
     # name_list = options['names']
-    # backup = cfg.backup
+    # backup = cfgs.backup
     ckpt = weightfile.split('/')[-1].split('.')[0]
     backup = weightfile.split('/')[-2]
     prefix = 'results/' + backup.split('/')[-1] + '/e' + ckpt

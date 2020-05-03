@@ -1,0 +1,10 @@
+D:\Code\python\Fewshot_Detection/voc/VOCdevkit/VOC2012/JPEGImages/2008_006761.jpg
+D:\Code\python\Fewshot_Detection/voc/VOCdevkit/VOC2007/JPEGImages/005620.jpg
+D:\Code\python\Fewshot_Detection/voc/VOCdevkit/VOC2007/JPEGImages/003032.jpg
+D:\Code\python\Fewshot_Detection/voc/VOCdevkit/VOC2012/JPEGImages/2008_005719.jpg
+D:\Code\python\Fewshot_Detection/voc/VOCdevkit/VOC2012/JPEGImages/2009_003396.jpg
+D:\Code\python\Fewshot_Detection/voc/VOCdevkit/VOC2012/JPEGImages/2008_008050.jpg
+D:\Code\python\Fewshot_Detection/voc/VOCdevkit/VOC2007/JPEGImages/001107.jpg
+D:\Code\python\Fewshot_Detection/voc/VOCdevkit/VOC2012/JPEGImages/2008_007374.jpg
+D:\Code\python\Fewshot_Detection/voc/VOCdevkit/VOC2012/JPEGImages/2008_006548.jpg
+D:\Code\python\Fewshot_Detection/voc/VOCdevkit/VOC2012/JPEGImages/2008_008765.jpg

@@ -67,10 +67,10 @@ class Reorg(nn.Module):
         assert(W % stride == 0)
         ws = stride
         hs = stride
-        x = x.view(B, C, H/hs, hs, W/ws, ws).transpose(3,4).contiguous()
-        x = x.view(B, C, H/hs*W/ws, hs*ws).transpose(2,3).contiguous()
-        x = x.view(B, C, hs*ws, H/hs, W/ws).transpose(1,2).contiguous()
-        x = x.view(B, hs*ws*C, H/hs, W/ws)
+        x = x.view(B, C, int(H/hs), hs, int(W/ws), ws).transpose(3,4).contiguous()
+        x = x.view(B, C, int(H/hs*W/ws), int(hs*ws)).transpose(2,3).contiguous()
+        x = x.view(B, C, int(hs*ws), int(H/hs), int(W/ws)).transpose(1,2).contiguous()
+        x = x.view(B, int(hs*ws*C), int(H/hs), int(W/ws))
         return x
 
 
@@ -90,7 +90,7 @@ class Darknet(nn.Module):
         self.learnet_blocks = learnet_file if isinstance(learnet_file, list) else parse_cfg(learnet_file)
         self.models = self.create_network(self.blocks) # merge conv, bn,leaky
         self.learnet_models = self.create_network(self.learnet_blocks)
-        self.loss = self.models[len(self.models)-1]
+        self.loss = self.models[len(self.models)-1]  # 最后一层
 
         self.width = int(self.blocks[0]['width'])
         self.height = int(self.blocks[0]['height'])
@@ -107,6 +107,7 @@ class Darknet(nn.Module):
     def meta_forward(self, metax, mask):
         # Get weights from learnet
         done_split = False
+
         for i in range(int(self.learnet_blocks[0]['feat_layer'])):
             if i == 0 and metax.size(1) == 6:
                 done_split = True
@@ -116,13 +117,14 @@ class Darknet(nn.Module):
             metax = torch.cat(torch.split(metax, int(metax.size(0)/2)), dim=1)
         if cfg.metain_type in [2, 3]:
             metax = torch.cat([metax, mask], dim=1)
-
         dynamic_weights = []
+
         for model in self.learnet_models:
             metax = model(metax)
             if isinstance(metax, list):
                 dynamic_weights.append(metax[0])
                 metax = metax[-1]
+        # print(dynamic_weights)
         dynamic_weights.append(metax)
 
         return dynamic_weights
@@ -133,6 +135,7 @@ class Darknet(nn.Module):
         dynamic_cnt = 0
         self.loss = None
         outputs = dict()
+
         for block in self.blocks:
             ind = ind + 1
             #if ind > 0:
@@ -148,6 +151,7 @@ class Darknet(nn.Module):
                  block['type'] == 'connected' or \
                  block['type'] == 'globalavg' or \
                  block['type'] == 'globalmax':
+                # print("dynamic shape is: ", dynamic_weights[dynamic_cnt].shape)
                 if self.is_dynamic(block):
                     x = self.models[ind]((x, dynamic_weights[dynamic_cnt]))
                     dynamic_cnt += 1
@@ -197,6 +201,7 @@ class Darknet(nn.Module):
     def forward(self, x, metax, mask, ids=None):
         # pdb.set_trace()
         dynamic_weights = self.meta_forward(metax, mask)
+        # print("{} is: {}".format("dynamic_weights", [e.shape for e in dynamic_weights]))
         x = self.detect_forward(x, dynamic_weights)
         return x
 
@@ -223,7 +228,7 @@ class Darknet(nn.Module):
                 kernel_size = int(block['size'])
                 stride = int(block['stride'])
                 is_pad = int(block['pad'])
-                pad = (kernel_size-1)/2 if is_pad else 0
+                pad = (kernel_size-1)//2 if is_pad else 0
                 activation = block['activation']
                 groups = 1
                 bias = bool(int(block['bias'])) if 'bias' in block else True
@@ -231,7 +236,9 @@ class Darknet(nn.Module):
                 if self.is_dynamic(block):
                     partial = int(block['partial']) if 'partial' in block else None
                     Conv2d = dynamic_conv2d(dynamic_count == 0, partial=partial)
+
                     dynamic_count += 1
+                    # print("it used dynamic conv {} times!!!".format(dynamic_count))
                 else:
                     Conv2d = nn.Conv2d
                 if 'groups' in block:

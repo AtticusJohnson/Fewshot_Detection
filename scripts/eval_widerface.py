@@ -60,7 +60,7 @@ def eval_widerface(cfgfile, weightfile, valdir, savedir):
                     save_boxes(img, boxes, savename)
 
 if __name__ == '__main__':
-    #eval_widerface('resnet50_test.cfg', 'resnet50_98000.weights', 'widerface/WIDER_val/images/', 'widerface/wider_val_pred/')
-    #eval_widerface('resnet50_test.cfg', 'resnet50_148000.weights', 'widerface/WIDER_val/images/', 'widerface/wider_val_pred/')
-    eval_widerface('resnet50_x32_test.cfg', 'resnet50_x32_288000.weights', 'widerface/WIDER_val/images/', 'widerface/wider_val_pred/')
+    #eval_widerface('resnet50_test.cfgs', 'resnet50_98000.weights', 'widerface/WIDER_val/images/', 'widerface/wider_val_pred/')
+    #eval_widerface('resnet50_test.cfgs', 'resnet50_148000.weights', 'widerface/WIDER_val/images/', 'widerface/wider_val_pred/')
+    eval_widerface('resnet50_x32_test.cfgs', 'resnet50_x32_288000.weights', 'widerface/WIDER_val/images/', 'widerface/wider_val_pred/')
 

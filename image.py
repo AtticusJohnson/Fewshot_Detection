@@ -101,7 +101,7 @@ def fill_truth_detection(labpath, w, h, flip, dx, dy, sx, sy):
             # Filter out bboxes not in base classes
             imgid = labpath.split('/')[-1].split('.')[0]
             clsid = int(bs[i][0])
-            # if clsid not in cfg.base_ids:
+            # if clsid not in cfgs.base_ids:
             #     continue
             if clsid in cfg.base_ids:
                 keepit = True
@@ -246,7 +246,10 @@ def load_data_detection(imgpath, labpath, shape, jitter, hue, saturation, exposu
 
 def load_data_with_label(imgpath, labpath, shape, jitter, hue, saturation, exposure, data_aug=True):
     ## data augmentation
-    img = Image.open(imgpath).convert('RGB')
+    # print(imgpath)
+    img = Image.open(imgpath)
+    img = img.convert('RGB')
+    # print(img.mode)
     img,flip,dx,dy,sx,sy = data_augmentation(img, shape, jitter, hue, saturation, exposure, flag=data_aug)
     label = load_label(labpath, img.width, img.height, flip, dx, dy, 1./sx, 1./sy)
     return img, label

@@ -10,7 +10,7 @@ from collections import OrderedDict
 from utils import do_detect, plot_boxes, load_class_names
 sys.path.append('/home/xiaohang/caffe/python')
 sys.path.append('.')
-import caffe
+# import caffe
 from region_loss import RegionLoss
 class Scale(nn.Module):
     def __init__(self):
@@ -26,7 +26,7 @@ class Eltwise(nn.Module):
 
     def forward(self, input_feats):
         if isinstance(input_feats, tuple):
-            print "error : The input of Eltwise layer must be a tuple"
+            print("error : The input of Eltwise layer must be a tuple")
         for i, feat in enumerate(input_feats):
             if x is None:
                 x = feat
@@ -45,7 +45,7 @@ class Concat(nn.Module):
 
     def forward(self, input_feats):
         if not isinstance(input_feats, tuple):
-            print 'The input of Concat layer must be a tuple'
+            print('The input of Concat layer must be a tuple')
         self.length = len(input_feats)
         x = torch.cat(input_feats, 1)
         return x
@@ -272,7 +272,7 @@ class CaffeNet(nn.Module):
                 top_dim[tops[0]] = top_dim[bottoms[0]]
                 models[name] = nn.Dropout2d(inplace=inplace)
             else:
-                print '%s is not NotImplemented'%ltype
+                print('%s is not NotImplemented'%ltype)
 
         return models
 
@@ -281,10 +281,10 @@ class CaffeNet(nn.Module):
         for name, layer in self.models.items():
             output_names = self.layer_map_to_top[name]
             input_names = self.layer_map_to_bottom[name]
-            print "-----------------------------------------"
-            print 'input_names: ',input_names
-            print 'output_names:',output_names
-            print layer
+            print("-----------------------------------------")
+            print('input_names: ',input_names)
+            print('output_names:',output_names)
+            print(layer)
             # frist layer
             if input_names[0] == 'data':
                 top_blobs = layer(x)
@@ -300,7 +300,7 @@ class CaffeNet(nn.Module):
             for k, v in zip(output_names, top_blobs):
                 blobs[k] = v
         output_name = blobs.keys()[-1]
-        print 'output_name',output_name
+        print('output_name',output_name)
         return blobs[output_name]
 
 

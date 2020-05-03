@@ -15,7 +15,7 @@ def valid(datacfg, darknetcfg, learnetcfg, weightfile, outfile, use_baserw=False
     valid_images = options['valid']
     metadict = options['meta']
     # name_list = options['names']
-    # backup = cfg.backup
+    # backup = cfgs.backup
     ckpt = weightfile.split('/')[-1].split('.')[0]
     backup = weightfile.split('/')[-2]
     ckpt_pre = '/ene_' if use_baserw else '/ene'
@@ -107,7 +107,7 @@ def valid(datacfg, darknetcfg, learnetcfg, weightfile, outfile, use_baserw=False
 
         if use_baserw:
             import pickle
-            # f = 'data/rws/voc_novel{}_.pkl'.format(cfg.novelid)
+            # f = 'data/rws/voc_novel{}_.pkl'.format(cfgs.novelid)
             f = 'data/rws/voc_novel{}_.pkl'.format(0)
             print('===> Loading from {}...'.format(f))
             with open(f, 'rb') as f:

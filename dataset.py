@@ -196,10 +196,10 @@ class listDataset(Dataset):
                 self.lines = [topath(l) for l in file.readlines()]
 
         # Filter out images not in base classes
-        print("===> Number of samples (before filtring): %d" % len(self.lines))
+        # print("===> Number of samples (before filtering): %d" % len(self.lines))
         if self.train and not isinstance(root, list):
             self.lines = [l for l in self.lines if self.is_valid(l)]
-        print("===> Number of samples (after filtring): %d" % len(self.lines))
+        # print("===> Number of samples (after filtering): %d" % len(self.lines))
 
         if shuffle:
             random.shuffle(self.lines)
@@ -300,7 +300,7 @@ class MetaDataset(Dataset):
             if cfg.data == 'coco':
                 factor = 4
         else:
-            # self.classes = cfg.base_classes
+            # self.classes = cfgs.base_classes
             if cfg.data == 'coco':
                 self.classes = cfg.base_classes
             else:
@@ -327,6 +327,7 @@ class MetaDataset(Dataset):
 
             self.metalines = [[]] * len(self.classes)
             for i, clsname in enumerate(self.classes):
+
                 with open(metafiles[clsname], 'r') as imgf:
                     lines = [topath(l) for l in imgf.readlines()]
                     self.metalines[i] = lines
@@ -346,6 +347,9 @@ class MetaDataset(Dataset):
         self.with_ids = with_ids
         self.ensemble = ensemble
         self.batch_size = len(self.classes) * cfg.num_gpus
+        ######################################################
+        # self.batch_size = len(self.classes) * 1  ##############
+
         self.meta_shape = (cfg.meta_width, cfg.meta_height)
         self.mask_shape = (cfg.mask_width, cfg.mask_height)
         self.transform = transform
@@ -490,12 +494,12 @@ class MetaDataset(Dataset):
 
 if __name__ == '__main__':
     from utils import read_data_cfg
-    from cfg import parse_cfg
+    from cfgs import parse_cfg
     from torchvision import transforms
 
-    datacfg = 'cfg/metayolo.data'
-    netcfg = 'cfg/dynamic_darknet_last.cfg'
-    metacfg = 'cfg/learnet_last.cfg'
+    datacfg = 'cfgs/metayolo.data'
+    netcfg = 'cfgs/dynamic_darknet_last.cfgs'
+    metacfg = 'cfgs/learnet_last.cfgs'
 
     data_options  = read_data_cfg(datacfg)
     net_options   = parse_cfg(netcfg)[0]

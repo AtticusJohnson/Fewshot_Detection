@@ -16,7 +16,7 @@ DROOT = '/home/bykang/voc'
 PROOT = '/shared/bykang/data2/projs/Fewshot_Detection'
 root = DROOT + '/voclist/'
 outroot = PROOT + '/data'
-cfgroot = PROOT + '/cfg'
+cfgroot = PROOT + '/cfgs'
 types = ['mix', 'few']
 
 for typ in types:

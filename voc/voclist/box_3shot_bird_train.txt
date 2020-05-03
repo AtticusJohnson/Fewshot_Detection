@@ -1,0 +1,3 @@
+D:\Code\python\Fewshot_Detection/voc/VOCdevkit/VOC2007/JPEGImages/003614.jpg
+D:\Code\python\Fewshot_Detection/voc/VOCdevkit/VOC2012/JPEGImages/2009_001208.jpg
+D:\Code\python\Fewshot_Detection/voc/VOCdevkit/VOC2012/JPEGImages/2009_000677.jpg

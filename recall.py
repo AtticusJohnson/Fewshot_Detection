@@ -80,4 +80,4 @@ if __name__ == '__main__':
     else:
         print('Usage:')
         print('python recall.py cfgfile weightfile imglist')
-        #python recall.py test160.cfg backup/000022.weights face_test.txt
+        #python recall.py test160.cfgs backup/000022.weights face_test.txt
