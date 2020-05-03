@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 from region_loss import RegionLossV2
-from cfg import *
+from cfgs import *
 # from dynamic_conv import DynamicConv2d
 from dynamic_conv import dynamic_conv2d
 from pooling import GlobalMaxPool2d

@@ -10,7 +10,7 @@ from torchvision import transforms
 from PIL import Image
 from utils import read_truths_args, read_truths, is_dict
 from image import *
-from cfg import cfg
+from cfgs import cfg
 from collections import defaultdict
 import pdb
 
@@ -494,7 +494,7 @@ class MetaDataset(Dataset):
 
 if __name__ == '__main__':
     from utils import read_data_cfg
-    from cfgs import parse_cfg
+    from cfgss import parse_cfg
     from torchvision import transforms
 
     datacfg = 'cfgs/metayolo.data'

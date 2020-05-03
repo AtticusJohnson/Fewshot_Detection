@@ -14,7 +14,7 @@ import dataset
 import random
 import math
 from utils import *
-from cfg import parse_cfg
+from cfgs import parse_cfg
 from darknet import Darknet
 
 

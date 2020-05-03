@@ -20,7 +20,7 @@ import random
 import math
 import os
 from utils import *
-from cfg import parse_cfg, cfg
+from cfgs import parse_cfg, cfg
 from darknet_meta import Darknet
 from models.tiny_yolo import TinyYoloNet
 import pdb
@@ -59,7 +59,7 @@ steps         = [float(step) for step in net_options['steps'].split(',')]
 scales        = [float(scale) for scale in net_options['scales'].split(',')]
 
 #Train parameters
-use_cuda      = False #####################################################################
+use_cuda      = True #####################################################################
 seed          = int(time.time())
 eps           = 1e-5
 dot_interval  = 70  # batches
@@ -175,7 +175,7 @@ def train(epoch):
 
     train_loader = torch.utils.data.DataLoader(
         dataset.listDataset(trainlist, shape=(init_width, init_height),
-                       shuffle=False,
+                       shuffle=True,
                        transform=transforms.Compose([
                            # transforms.Resize([448, 448]),
                            transforms.ToTensor(),
@@ -193,7 +193,7 @@ def train(epoch):
         # batch_size=batch_size,
         shuffle=False,
         num_workers=num_workers,
-        pin_memory=False ####################
+        pin_memory=True ####################
     )
     # print("meta b nw is: ", batch_size, num_workers)
     metaloader = iter(metaloader)

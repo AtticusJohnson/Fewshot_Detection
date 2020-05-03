@@ -6,7 +6,7 @@ import torch.nn.functional as F
 import numpy as np
 from torch.autograd import Variable
 from utils import *
-from cfg import cfg
+from cfgs import cfg
 from numbers import Number
 from random import random
 import pdb

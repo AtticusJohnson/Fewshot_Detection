@@ -4,8 +4,8 @@ import torch
 from torch.autograd import Variable
 from torchvision import datasets, transforms
 from utils import *
-from cfg import cfg
-from cfg import parse_cfg
+from cfgs import cfg
+from cfgs import parse_cfg
 import os
 
 
