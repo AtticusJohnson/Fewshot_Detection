@@ -6,7 +6,20 @@ Implementation for the paper:
 
 [Bingyi Kang](https://scholar.google.com.sg/citations?user=NmHgX-wAAAAJ)\*, [Zhuang Liu](https://liuzhuang13.github.io)\*, [Xin Wang](https://people.eecs.berkeley.edu/~xinw/), [Fisher Yu](https://www.yf.io), [Jiashi Feng](https://sites.google.com/site/jshfeng/home) and [Trevor Darrell](https://people.eecs.berkeley.edu/~trevor/) (\* equal contribution)
 
-Our code is based on  [https://github.com/marvis/pytorch-yolo2](https://github.com/marvis/pytorch-yolo2) and developed with  Python 2.7 & PyTorch 0.3.1.
+This code is forked from [https://github.com/bingykang/Fewshot_Detection](https://github.com/bingykang/Fewshot_Detection) and we convert the developing environments from python2.7-pytorch0.3.1 to python3.6-pytorch0.4.1.
+
+
+## Code Analization
+If you want to use it directly, please pass this part.
+
+### data generation
+
+#### voc_label.py
+The voc_label.py id used to generate a **voc_train.txt** file, which writelines all image path from voc datasets, like **"D:/dataset/VOCdevkit/VOC2007/JPEGImages/000012.jpg"**
+
+#### voc_label_1c.py
+
+
 
 
 
