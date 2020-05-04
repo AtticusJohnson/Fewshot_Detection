@@ -419,8 +419,10 @@ class RegionLossV2(nn.Module):
         # loss_cls_new *= 10
         # loss_cls += loss_cls_new
 
-        loss = loss_x + loss_y + loss_w + loss_h + loss_conf + loss_cls
+        loss_total = loss_x + loss_y + loss_w + loss_h + loss_conf + loss_cls
         t4 = time.time()
+
+        loss = {"loss_total": loss_total, "loss_x": loss_x, "loss_y": loss_y, "loss_w": loss_w, "loss_h": loss_h, "loss_conf": loss_conf, "loss_cls": loss_cls}
         if False:
             print('-----------------------------------')
             print('        activation : %f' % (t1 - t0))
@@ -428,9 +430,10 @@ class RegionLossV2(nn.Module):
             print('     build targets : %f' % (t3 - t2))
             print('       create loss : %f' % (t4 - t3))
             print('             total : %f' % (t4 - t0))
-        print('%d: nGT %d, recall %d, proposals %d, loss: x %f, y %f, w %f, h %f, conf %f, cls %f, total %f' % (self.seen, nGT, nCorrect, nProposals, loss_x.data, loss_y.data, loss_w.data, loss_h.data, loss_conf.data, loss_cls.data, loss.data))
+
+        printout = '%d: nGT %d, recall %d, proposals %d, loss: x %f, y %f, w %f, h %f, conf %f, cls %f, total %f' % (self.seen, nGT, nCorrect, nProposals, loss_x.data, loss_y.data, loss_w.data, loss_h.data, loss_conf.data, loss_cls.data, loss.data)
         # print('%d: nGT %d, recall %d, proposals %d, loss: x %f, y %f, w %f, h %f, conf %f, cls %f, cls_new %f, total %f' % (self.seen, nGT, nCorrect, nProposals, loss_x.data[0], loss_y.data[0], loss_w.data[0], loss_h.data[0], loss_conf.data[0], loss_cls.data[0], loss_cls_new.data[0], loss.data[0]))
-        return loss
+        return loss, printout
 
 
 def select_classes(pred, tgt, ids):

@@ -1,6 +1,15 @@
 from __future__ import print_function
 import sys
+import os
 from tqdm import tqdm
+from tensorboardX import SummaryWriter
+writer = SummaryWriter(logdir='scalar')
+checkpoint_path = "checkpoints"
+if not os.path.exists("checkpoints"):
+    os.mkdir("checkpoints/")
+launchTimestamp = 1
+
+
 if len(sys.argv) != 5:
     print('Usage:')
     print('python train.py datacfg darknetcfg learnetcfg weightfile')
@@ -228,10 +237,12 @@ def train(epoch):
         t6 = time.time()
         region_loss.seen = region_loss.seen + data.data.size(0)
         # ("target shape :", target.shape)
-        loss = region_loss(output, target.float(), use_cuda)
+
+        # loss has been changed to a dict!
+        loss, printout = region_loss(output, target.float(), use_cuda)
 
         t7 = time.time()
-        loss.backward()
+        loss["loss_total"].backward()
         t8 = time.time()
         optimizer.step()
         t9 = time.time()
@@ -255,15 +266,33 @@ def train(epoch):
             print('        backward : %f' % (avg_time[6]/(batch_idx)))
             print('            step : %f' % (avg_time[7]/(batch_idx)))
             print('           total : %f' % (avg_time[8]/(batch_idx)))
+
+
         t1 = time.time()
+        if batch_idx % 199 == 1:
+            cur_step = model.seen
+            writer.add_scalar("scalar/trainLoss", loss["loss_total"].data(), cur_step)
+            writer.add_scalars("scalar/separatedLoss", {"loss_conf": loss["loss_conf"].data(), "loss_cls": loss["loss_cls"].data}, cur_step)
+            writer.add_scalar("scalar/trainLr", lr, cur_step)
+            print(str(epoch) + '->' + printout)
+
     # print('')
     t1 = time.time()
     logging('training with %f samples/s' % (len(train_loader.dataset)/(t1-t0)))
 
+
+
     if (epoch+1) % cfg.save_interval == 0:
+
+        torch.save({'epoch': epoch + 1, 'state_dict': model.state_dict(),
+                    'optimizer': optimizer.state_dict()},
+                   checkpoint_path + '/m-' + launchTimestamp + '-' + str(epoch+1) + 'epoch-' + str("%.4f" % loss["loss_total"]) + '.pth.tar')
+
         logging('save weights to %s/%06d.weights' % (backupdir, epoch+1))
         cur_model.seen = (epoch + 1) * len(train_loader.dataset)
         cur_model.save_weights('%s/%06d.weights' % (backupdir, epoch+1))
+        print("save checkpoint finished!")
+
 
 
 # def test(epoch):
@@ -333,8 +362,9 @@ if evaluate:
     # test(0)
 else:
     for epoch in range(init_epoch, int(max_epochs)):
-        print("<=====================================================>")
-        print("<==================={}th epoch of {}====================>".format(epoch, int(max_epochs)))
-        print("<=====================================================>")
+        # print("<=====================================================>")
+        # print("<==================={}th epoch of {}====================>".format(epoch, int(max_epochs)))
+        # print("<=====================================================>")
         train(epoch)
+        writer.close()
         # test(epoch)
