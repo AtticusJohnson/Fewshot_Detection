@@ -18,11 +18,14 @@ If you want to use it directly, please pass this part.
 The voc_label.py id used to generate a **voc_train.txt** file, which writelines all image path from voc datasets, like **"D:/dataset/VOCdevkit/VOC2007/JPEGImages/000012.jpg"**
 
 #### voc_label_1c.py
+Generate the image path for per-class.
 
+#### convert_fewlist.py
+Generate few-shot image list To use author's few-shot datasets, like "box_1shot_aeroplane_train.txt", and there is only one image path in every txt file.
+You may also use **gen_fewlist.py** to genetate new few_shot list.
 
-
-
-
+#### Dataset Precautions
+In this model, there two parts of datasets will be push in. The different train model txt files are in "data/". And in basic train at first, it is proposed to adopt the **voc_traindict_full.txt** model file, which may release pressure of network because it is difficult to learn a novel class weighting model for backbone feature's channel. In other words, it will be easier for net pay attention to the object which has been seen lots of times.
 
 
 ## Detection Examples (3-shot)
