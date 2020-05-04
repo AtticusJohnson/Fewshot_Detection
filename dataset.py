@@ -14,6 +14,7 @@ from cfg import cfg
 from collections import defaultdict
 import pdb
 
+NUMDATA = 256000
 def topath(p):
     return p.replace('scratch', 'tmp_scratch/basilisk')
 
@@ -176,7 +177,8 @@ class listDataset(Dataset):
             shuffle=True,
             transform=None,
             target_transform=None,
-            train=False, seen=0,
+            train=False,
+            seen=0,
             batch_size=64,
             num_workers=4):
         self.train = train
@@ -220,8 +222,10 @@ class listDataset(Dataset):
         assert index <= len(self), 'index range error'
         imgpath = self.lines[index].rstrip()
 
-        bs = 64
-        batchs = 4000
+        bs = self.batch_size
+        batchs = NUMDATA // bs
+
+        # 多尺度训练
         if self.train and index % bs== 0 and cfg.data != 'coco' and cfg.multiscale:
             if self.first_batch:
                 width = 19 * 32
@@ -308,7 +312,7 @@ class MetaDataset(Dataset):
             factor = 10
         print('num classes: ', len(self.classes))
 
-        nbatch = factor * 500 * 64 * cfg.num_gpus // cfg.batch_size
+        nbatch = factor * 500 * 64 * cfg.num_gpus // cfg.batch_size  # meta 数据量设置的比较少
 
         metainds = [[]] * len(self.classes)
         with open(metafiles, 'r') as f:

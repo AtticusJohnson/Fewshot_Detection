@@ -40,7 +40,8 @@ cfg.config_data(data_options)
 cfg.config_meta(meta_options)
 cfg.config_net(net_options)
 
-# Parameters 
+# original model Parameters
+# !!! the meta model 的参数在后面 不是这里
 metadict      = data_options['meta']
 trainlist     = data_options['train']
 
@@ -93,8 +94,8 @@ model.load_weights(weightfile)
 ### Meta-model parameters
 region_loss.seen  = model.seen
 processed_batches = 0 if cfg.tuning else model.seen/batch_size
-trainlist         = dataset.build_dataset(data_options)
-nsamples          = len(trainlist)
+trainlist         = dataset.build_dataset(data_options)  #########针对meta模式重新定义
+nsamples          = len(trainlist)  #########针对meta模式重新定义 15-classes
 init_width        = model.width
 init_height       = model.height
 init_epoch        = 0 if cfg.tuning else int(model.seen/nsamples)
