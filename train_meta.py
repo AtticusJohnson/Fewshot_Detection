@@ -29,7 +29,7 @@ import random
 import math
 import os
 from utils import *
-from cfgs import parse_cfg, cfg
+from cfg import parse_cfg, cfg
 from darknet_meta import Darknet
 from models.tiny_yolo import TinyYoloNet
 import pdb
