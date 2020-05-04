@@ -112,12 +112,12 @@ wget http://pjreddie.com/media/files/darknet19_448.conv.23
 
 + Train The Model
 ```
-python train_meta.py cfg/metayolo.data cfg/darknet_dynamic.cfg cfg/reweighting_net.cfg darknet19_448.conv.23
+python train_meta.py cfgs/metayolo.data cfgs/darknet_dynamic.cfg cfgs/reweighting_net.cfg darknet19_448.conv.23
 ```
 
 + Evaluate the Model
 ```
-python valid_ensemble.py cfg/metayolo.data cfg/darknet_dynamic.cfg cfg/reweighting_net.cfg path/toweightfile
+python valid_ensemble.py cfgs/metayolo.data cfgs/darknet_dynamic.cfg cfgs/reweighting_net.cfg path/toweightfile
 python scripts/voc_eval.py results/path/to/comp4_det_test_
 ```
 
@@ -147,12 +147,12 @@ gpus  = 1,2,3,4
 
 + Train The Model
 ```
-python train_meta.py cfg/metatune.data cfg/darknet_dynamic.cfg cfg/reweighting_net.cfg path/to/base/weightfile
+python train_meta.py cfgs/metatune.data cfgs/darknet_dynamic.cfg cfgs/reweighting_net.cfg path/to/base/weightfile
 ```
 
 + Evaluate the Model
 ```
-python valid_ensemble.py cfg/metatune.data cfg/darknet_dynamic.cfg cfg/reweighting_net.cfg path/to/tuned/weightfile
+python valid_ensemble.py cfgs/metatune.data cfgs/darknet_dynamic.cfg cfgs/reweighting_net.cfg path/to/tuned/weightfile
 python scripts/voc_eval.py results/path/to/comp4_det_test_
 ```
 

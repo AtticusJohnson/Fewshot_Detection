@@ -22,7 +22,7 @@ def get_id(s):
 
 def get_novels(root, id=None):
     if root.endswith('txt'):
-        if id == 'None':
+        if id == None:
             return []
         with open(root, 'r') as f:
             novels = f.readlines()
@@ -243,9 +243,10 @@ def voc_eval(detpath,
     
 
 
-def _do_python_eval(res_prefix, novel=False, output_dir = 'output'):
+def _do_python_eval(_devkit_path, res_prefix, novel=False, output_dir = 'output'):
     # _devkit_path = '/data2/bykang/pytorch-yolo2/VOCdevkit'
-    _devkit_path = '/tmp_scratch/basilisk/bykang/datasets/VOCdevkit'
+    if not _devkit_path:
+        _devkit_path = '/tmp_scratch/basilisk/bykang/datasets/VOCdevkit'
     _year = '2007'
     _classes = ('__background__', # always index 0
         'aeroplane', 'bicycle', 'bird', 'boat',
@@ -339,7 +340,8 @@ if __name__ == '__main__':
     parser.add_argument('--single', action='store_true')  
     args = parser.parse_args()
     args.novel = True
+    voc_data_path = ""
     print(args.res_prefix)
-    _do_python_eval(args.res_prefix, novel=args.novel, output_dir = 'output')
+    _do_python_eval(voc_data_path, args.res_prefix, novel=args.novel, output_dir = 'output')
 
 
