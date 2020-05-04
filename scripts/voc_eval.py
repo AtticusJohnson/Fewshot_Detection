@@ -6,7 +6,7 @@
 
 import xml.etree.ElementTree as ET
 import os,sys
-import cPickle
+import pickle
 import numpy as np
 import argparse
 from os import path
@@ -145,11 +145,11 @@ def voc_eval(detpath,
         # save
         print('Saving cached annotations to {:s}'.format(cachefile))
         with open(cachefile, 'w') as f:
-            cPickle.dump(recs, f)
+            pickle.dump(recs, f)
     else:
         # load
         with open(cachefile, 'r') as f:
-            recs = cPickle.load(f)
+            recs = pickle.load(f)
 
     # extract gt objects for this class
     class_recs = {}
@@ -304,7 +304,7 @@ def _do_python_eval(res_prefix, novel=False, output_dir = 'output'):
         # print(prec)
 
         with open(os.path.join(output_dir, cls + '_pr.pkl'), 'w') as f:
-            cPickle.dump({'rec': rec, 'prec': prec, 'ap': ap}, f)
+            pickle.dump({'rec': rec, 'prec': prec, 'ap': ap}, f)
     print('~~~~~~~~')
     print('Mean AP = {:.4f}'.format(np.mean(aps)))
     if novel:
