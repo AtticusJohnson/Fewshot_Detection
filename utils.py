@@ -193,6 +193,9 @@ def get_region_boxes(output, conf_thresh, num_classes, anchors, num_anchors, onl
     return all_boxes
 
 def get_region_boxes_v2(output, n_models, conf_thresh, num_classes, anchors, num_anchors, only_objectness=1, validation=False):
+    num_classes = int(num_classes)
+    num_anchors = int(num_anchors)
+
     cs = n_models
     nA = num_anchors
     nC = num_classes
