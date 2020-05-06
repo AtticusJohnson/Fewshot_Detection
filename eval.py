@@ -49,7 +49,7 @@ if use_cuda:
     torch.cuda.manual_seed(seed)
 
 model       = Darknet(cfgfile)
-model.print_network()
+# model.print_network()
 
 init_width        = model.width
 init_height       = model.height

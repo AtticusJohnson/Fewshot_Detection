@@ -24,7 +24,7 @@ def valid(datacfg, cfgfile, weightfile, outfile):
         valid_files = [item.rstrip() for item in tmp_files]
     
     m = Darknet(cfgfile)
-    m.print_network()
+    # m.print_network()
     m.load_weights(weightfile)
     m.cuda()
     m.eval()
