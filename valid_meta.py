@@ -9,7 +9,6 @@ from cfg import parse_cfg
 import os
 import pdb
 
-
 def valid(datacfg, darknetcfg, learnetcfg, weightfile, outfile):
     options = read_data_cfg(datacfg)
     valid_images = options['valid']

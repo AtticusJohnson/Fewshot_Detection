@@ -12,10 +12,10 @@ region_loss = model.loss
 
 # 查看网络结构
 model.print_network()
-data_shape = [8, 3, 448, 448]
-mask_shape = [8, 1, 448, 448]
-meta_shape = [8, 3, 448, 448]
-target_shape = [8, 15, 250]
+data_shape = [1, 3, 448, 448]
+mask_shape = [1, 1, 448, 448]
+meta_shape = [1, 3, 448, 448]
+target_shape = [1, 15, 250]
 model.train()
 
 # model测试
