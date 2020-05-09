@@ -14,7 +14,6 @@ from cfg import cfg
 from collections import defaultdict
 import pdb
 
-NUMDATA = 256000
 def topath(p):
     return p.replace('scratch', 'tmp_scratch/basilisk')
 
@@ -41,6 +40,7 @@ def loadlines(root, checkvalid=True):
 
 
 def is_valid(imgpath, withnovel=True):
+#     print(imagepath)
     labpath = listDataset.get_labpath(imgpath.rstrip())
     if os.path.getsize(labpath):
         bs = np.loadtxt(labpath)
@@ -177,8 +177,7 @@ class listDataset(Dataset):
             shuffle=True,
             transform=None,
             target_transform=None,
-            train=False,
-            seen=0,
+            train=False, seen=0,
             batch_size=64,
             num_workers=4):
         self.train = train
@@ -222,10 +221,8 @@ class listDataset(Dataset):
         assert index <= len(self), 'index range error'
         imgpath = self.lines[index].rstrip()
 
-        bs = self.batch_size
-        batchs = NUMDATA // bs
-
-        # 多尺度训练
+        bs = 64
+        batchs = 4000
         if self.train and index % bs== 0 and cfg.data != 'coco' and cfg.multiscale:
             if self.first_batch:
                 width = 19 * 32
@@ -276,6 +273,7 @@ class listDataset(Dataset):
 
     @staticmethod
     def is_valid(imgpath):
+        print(imgpath)
         labpath = listDataset.get_labpath(imgpath.rstrip())
         if os.path.getsize(labpath):
             bs = np.loadtxt(labpath)
@@ -312,7 +310,7 @@ class MetaDataset(Dataset):
             factor = 10
         print('num classes: ', len(self.classes))
 
-        nbatch = factor * 500 * 64 * cfg.num_gpus // cfg.batch_size  # meta 数据量设置的比较少
+        nbatch = factor * 500 * 64 * cfg.num_gpus // cfg.batch_size
 
         metainds = [[]] * len(self.classes)
         with open(metafiles, 'r') as f:
@@ -457,7 +455,7 @@ class MetaDataset(Dataset):
         print('===> filtering...')
         _cnt = 0
         for clsid, metaind in inds:
-            print('|{}/{}'.format(_cnt, len(inds)))
+#             print('|{}/{}'.format(_cnt, len(inds)))
             _cnt += 1
             img, mask = self.get_metain(clsid, metaind)
             if img is not None:
@@ -498,7 +496,7 @@ class MetaDataset(Dataset):
 
 if __name__ == '__main__':
     from utils import read_data_cfg
-    from cfgs import parse_cfg
+    from cfgss import parse_cfg
     from torchvision import transforms
 
     datacfg = 'cfgs/metayolo.data'

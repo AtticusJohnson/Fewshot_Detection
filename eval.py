@@ -14,7 +14,7 @@ import dataset
 import random
 import math
 from utils import *
-from cfg import parse_cfg
+from cfgs import parse_cfg
 from darknet import Darknet
 
 
@@ -49,7 +49,7 @@ if use_cuda:
     torch.cuda.manual_seed(seed)
 
 model       = Darknet(cfgfile)
-# model.print_network()
+model.print_network()
 
 init_width        = model.width
 init_height       = model.height

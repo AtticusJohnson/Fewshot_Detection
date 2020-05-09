@@ -1,10 +1,18 @@
 from __future__ import print_function
 import sys
 from tqdm import tqdm
+import os
 if len(sys.argv) != 5:
     print('Usage:')
     print('python train.py datacfg darknetcfg learnetcfg weightfile')
     exit()
+from tensorboardX import SummaryWriter
+writer = SummaryWriter(logdir='scalar')
+checkpoint_path = "checkpoints"
+if not os.path.exists("checkpoints"):
+    os.mkdir("checkpoints/")
+launchTimestamp = "20200509-1042"
+save_interval = 10
 
 import time
 import torch
@@ -40,8 +48,7 @@ cfg.config_data(data_options)
 cfg.config_meta(meta_options)
 cfg.config_net(net_options)
 
-# original model Parameters
-# !!! the meta model 的参数在后面 不是这里
+# Parameters 
 metadict      = data_options['meta']
 trainlist     = data_options['train']
 
@@ -60,7 +67,7 @@ steps         = [float(step) for step in net_options['steps'].split(',')]
 scales        = [float(scale) for scale in net_options['scales'].split(',')]
 
 #Train parameters
-use_cuda      = False #####################################################################
+use_cuda      = True #####################################################################
 seed          = int(time.time())
 eps           = 1e-5
 dot_interval  = 70  # batches
@@ -94,8 +101,8 @@ model.load_weights(weightfile)
 ### Meta-model parameters
 region_loss.seen  = model.seen
 processed_batches = 0 if cfg.tuning else model.seen/batch_size
-trainlist         = dataset.build_dataset(data_options)  #########针对meta模式重新定义
-nsamples          = len(trainlist)  #########针对meta模式重新定义 15-classes
+trainlist         = dataset.build_dataset(data_options)
+nsamples          = len(trainlist)
 init_width        = model.width
 init_height       = model.height
 init_epoch        = 0 if cfg.tuning else int(model.seen/nsamples)
@@ -176,7 +183,7 @@ def train(epoch):
 
     train_loader = torch.utils.data.DataLoader(
         dataset.listDataset(trainlist, shape=(init_width, init_height),
-                       shuffle=False,
+                       shuffle=True,
                        transform=transforms.Compose([
                            # transforms.Resize([448, 448]),
                            transforms.ToTensor(),
@@ -194,7 +201,7 @@ def train(epoch):
         # batch_size=batch_size,
         shuffle=False,
         num_workers=num_workers,
-        pin_memory=False ####################
+        pin_memory=True ####################
     )
     # print("meta b nw is: ", batch_size, num_workers)
     metaloader = iter(metaloader)
@@ -203,12 +210,12 @@ def train(epoch):
     logging('epoch %d/%d, processed %d samples, lr %f' % (epoch, max_epochs, epoch * len(train_loader.dataset), lr))
 
     model.train()
-    t1 = time.time()
+#     t1 = time.time()
     avg_time = torch.zeros(9)
     for batch_idx, (data, target) in enumerate(tqdm(train_loader)):
 
         metax, mask = metaloader.next()
-        t2 = time.time()
+#         t2 = time.time()
         adjust_learning_rate(optimizer, processed_batches)
         processed_batches = processed_batches + 1
 
@@ -217,25 +224,25 @@ def train(epoch):
             metax = metax.cuda()
             mask = mask.cuda()
             #target= target.cuda()
-        t3 = time.time()
-        # data, target = Variable(data), Variable(target)
-        # metax, mask = Variable(metax), Variable(mask)
-        t4 = time.time()
+#         t3 = time.time()
+        data, target = Variable(data), Variable(target)
+        metax, mask = Variable(metax), Variable(mask)
+#         t4 = time.time()
         optimizer.zero_grad()
-        t5 = time.time()
+#         t5 = time.time()
         # print("input data shape: ", [data.shape, metax.shape, mask.shape])
         output = model(data.float(), metax.float(), mask.float())  # torch.Size([1, 30, 13, 13])
         # print("output shape: ", output.shape)
-        t6 = time.time()
+#         t6 = time.time()
         region_loss.seen = region_loss.seen + data.data.size(0)
         # ("target shape :", target.shape)
-        loss = region_loss(output, target.float(), use_cuda)
+        loss_total, loss, printout, cur_step = region_loss(output, target.float(), use_cuda)
 
-        t7 = time.time()
-        loss.backward()
-        t8 = time.time()
+#         t7 = time.time()
+        loss_total.backward()
+#         t8 = time.time()
         optimizer.step()
-        t9 = time.time()
+#         t9 = time.time()
         if False and batch_idx > 1:
             avg_time[0] = avg_time[0] + (t2-t1)
             avg_time[1] = avg_time[1] + (t3-t2)
@@ -256,15 +263,31 @@ def train(epoch):
             print('        backward : %f' % (avg_time[6]/(batch_idx)))
             print('            step : %f' % (avg_time[7]/(batch_idx)))
             print('           total : %f' % (avg_time[8]/(batch_idx)))
-        t1 = time.time()
+
+#         t1 = time.time()
+        
+        writer.add_scalar("scalar/trainLoss", loss_total.item(), cur_step)
+        writer.add_scalars("scalar/separatedLoss", {"loss_conf": loss["loss_conf"].item(), "loss_cls": loss["loss_cls"].item()}, cur_step)
+        writer.add_scalar("scalar/trainLr", lr, cur_step)
+        if batch_idx % 99 == 1:       
+            print(str(epoch+1) + '->' + printout)
+            
+        del loss_total, loss, cur_step
+        torch.cuda.empty_cache()
+            
     # print('')
     t1 = time.time()
     logging('training with %f samples/s' % (len(train_loader.dataset)/(t1-t0)))
 
-    if (epoch+1) % cfg.save_interval == 0:
+    if (epoch+1) % save_interval == 0:
+        torch.save({'epoch': epoch + 1, 'state_dict': model.state_dict(),
+                    'optimizer': optimizer.state_dict()},
+                   checkpoint_path + '/m-' + launchTimestamp + '-' + str(epoch+1) + 'epoch-' + str("%.4f" % loss_total.data) + '.pth.tar')
+
         logging('save weights to %s/%06d.weights' % (backupdir, epoch+1))
         cur_model.seen = (epoch + 1) * len(train_loader.dataset)
         cur_model.save_weights('%s/%06d.weights' % (backupdir, epoch+1))
+        print("save checkpoint finished!")
 
 
 # def test(epoch):
@@ -334,8 +357,11 @@ if evaluate:
     # test(0)
 else:
     for epoch in range(init_epoch, int(max_epochs)):
-        print("<=====================================================>")
-        print("<==================={}th epoch of {}====================>".format(epoch, int(max_epochs)))
-        print("<=====================================================>")
+#         print("<=====================================================>")
+#         print("<==================={}th epoch of {}====================>".format(epoch, int(max_epochs)))
+#         print("<=====================================================>")
         train(epoch)
+        writer.close()
         # test(epoch)
+        
+os.system('/root/shutdown.sh')

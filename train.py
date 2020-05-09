@@ -19,8 +19,8 @@ import random
 import math
 import os
 from utils import *
-from cfg import parse_cfg
-from cfg import cfg
+from cfgs import parse_cfg
+from cfgs import cfg
 from region_loss import RegionLoss
 from darknet import Darknet
 from models.tiny_yolo import TinyYoloNet

@@ -69,7 +69,7 @@ def data_augmentation(img, shape, jitter, hue, saturation, exposure, flag=True):
         sx = float(swidth)  / ow
         sy = float(sheight) / oh
         
-        cropped = img.crop((pleft, ptop, pleft + swidth - 1, ptop + sheight - 1))
+        cropped = img.crop( (pleft, ptop, pleft + swidth - 1, ptop + sheight - 1))
 
         dx = (float(pleft)/ow)/sx
         dy = (float(ptop) /oh)/sy

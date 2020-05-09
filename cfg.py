@@ -112,10 +112,7 @@ def __configure_data(dataopt):
         else:
             raise NotImplementedError('Data type {} not found'.format(dataopt['data']))
     else:
-        # 除去选择的novel classes->生成基本的base_classes
         __C.base_classes = [c for c in __C.classes if c not in __C.novel_classes]
-
-
     __C.base_ids = [__C.classes.index(c) for c in __C.base_classes]
     __C.novel_ids = [__C.classes.index(c) for c in __C.novel_classes]
     __C._real_base_ids = [i for i in range(len(__C.classes)) if i not in __C.novel_ids]
@@ -416,7 +413,7 @@ def load_conv(buf, start, conv_model):
     if conv_model.bias is not None:
         num_b = conv_model.bias.numel()
         conv_model.bias.data.copy_(torch.from_numpy(buf[start:start+num_b]));   start = start + num_b
-    conv_model.weight.data.copy_(torch.from_numpy(buf[start:start+num_w])); start = start + num_w
+    conv_model.weight.data.copy_(torch.from_numpy(buf[start:start+num_w]).reshape_as(conv_model.weight.data)); start = start + num_w
     return start
 
 def load_convfromcoco(buf, start, conv_model):

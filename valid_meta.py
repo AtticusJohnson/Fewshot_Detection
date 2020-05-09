@@ -9,6 +9,7 @@ from cfg import parse_cfg
 import os
 import pdb
 
+
 def valid(datacfg, darknetcfg, learnetcfg, weightfile, outfile):
     options = read_data_cfg(datacfg)
     valid_images = options['valid']
@@ -27,7 +28,7 @@ def valid(datacfg, darknetcfg, learnetcfg, weightfile, outfile):
         valid_files = [item.rstrip() for item in tmp_files]
     
     m = Darknet(darknetcfg, learnetcfg)
-    # m.print_network()
+    m.print_network()
     m.load_weights(weightfile)
     m.cuda()
     m.eval()

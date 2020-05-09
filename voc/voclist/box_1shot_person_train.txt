@@ -1,1 +1,1 @@
-D:\Code\python\Fewshot_Detection/voc/VOCdevkit/VOC2012/JPEGImages/2009_002273.jpg
+/input/program/Fewshot_Detection/voc/VOCdevkit/VOC2012/JPEGImages/2009_002273.jpg

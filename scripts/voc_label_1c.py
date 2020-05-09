@@ -15,7 +15,6 @@ sets=[('2012', 'train'), ('2012', 'val'), ('2007', 'train'), ('2007', 'val'), ('
 
 classes = ["aeroplane", "bicycle", "bird", "boat", "bottle", "bus", "car", "cat", "chair", "cow", "diningtable", "dog", "horse", "motorbike", "person", "pottedplant", "sheep", "sofa", "train", "tvmonitor"]
 
-
 def convert(size, box):
     dw = 1./size[0]
     dh = 1./size[1]
@@ -28,7 +27,6 @@ def convert(size, box):
     y = y*dh
     h = h*dh
     return (x,y,w,h)
-
 
 def convert_annotation(year, image_id, class_name):
     in_file = open('VOCdevkit/VOC%s/Annotations/%s.xml'%(year, image_id))

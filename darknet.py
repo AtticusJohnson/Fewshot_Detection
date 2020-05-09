@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 from region_loss import RegionLoss
-from cfg import *
+from cfgs import *
 import pdb
 
 #from layers.batchnorm.bn import BN2d

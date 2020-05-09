@@ -6,28 +6,11 @@ Implementation for the paper:
 
 [Bingyi Kang](https://scholar.google.com.sg/citations?user=NmHgX-wAAAAJ)\*, [Zhuang Liu](https://liuzhuang13.github.io)\*, [Xin Wang](https://people.eecs.berkeley.edu/~xinw/), [Fisher Yu](https://www.yf.io), [Jiashi Feng](https://sites.google.com/site/jshfeng/home) and [Trevor Darrell](https://people.eecs.berkeley.edu/~trevor/) (\* equal contribution)
 
-This code is forked from [https://github.com/bingykang/Fewshot_Detection](https://github.com/bingykang/Fewshot_Detection) and we convert the developing environments from python2.7-pytorch0.3.1 to python3.6-pytorch0.4.1.
+Our code is based on  [https://github.com/marvis/pytorch-yolo2](https://github.com/marvis/pytorch-yolo2) and developed with  Python 2.7 & PyTorch 0.3.1.
 
 
-## Code Analization
-If you want to use it directly, please pass this part.
 
-### Data Generation
-#### voc_label.py
-The voc_label.py id used to generate a **voc_train.txt** file, which writelines all image path from voc datasets, like **"D:/dataset/VOCdevkit/VOC2007/JPEGImages/000012.jpg"**
-#### voc_label_1c.py
-Generate the image path for per-class.
-#### convert_fewlist.py
-Generate few-shot image list To use author's few-shot datasets, like "box_1shot_aeroplane_train.txt", and there is only one image path in every txt file.
-You may also use **gen_fewlist.py** to genetate new few_shot list.
-#### Data Precautions
-In this model, there two parts of datasets will be push in. The different train model txt files are in "data/". And in basic train at first, it is proposed to adopt the **voc_traindict_full.txt** model file, which may release pressure of network because it is difficult to learn a novel class weighting model for backbone feature's channel. In other words, it will be easier for net to pay attention to the class which has been seen lots of times. And in construction of dateset, it will be randomly chosen 15 classes as training class and then in finetune stage, k-shot residual 5 classes will be used.  
 
-### Dataset Generation
-ListDataset organizes the mutiply-scale image to train basic network, and it also provides augumentation functions.
-And it completes a lot of functions such as augumentation and muti-scale images training.
-Lots of configuration is defined in cfg.pyc such as the novel class and base class, **which split data into two parts separately**.
-MetaDataset organizes the base class meta data and its masks. The shape of them are defined in cfg.
 
 ## Detection Examples (3-shot)
 

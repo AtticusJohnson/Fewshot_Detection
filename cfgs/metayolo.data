@@ -3,15 +3,12 @@ metain_type=2
 data=voc
 neg = 1
 rand = 0
-
 novel = data/voc_novels.txt
 novelid = 0
 # scale = 0
-
 meta = data/voc_traindict_full.txt
-train = D:\dataset/voc_train.txt
-valid = D:\dataset/2007_test.txt
+train = voc/voc_train.txt
+valid = voc/2007_test.txt
 backup = backup/metayolo
-
-gpus=0,1,2,3
+gpus=0,1
 num_workers=4

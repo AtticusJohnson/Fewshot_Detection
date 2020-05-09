@@ -129,8 +129,8 @@ def build_targets(pred_boxes, target, anchors, num_anchors, num_classes, nH, nW,
             conf_mask[b][best_n][gj][gi] = object_scale
             tx[b][best_n][gj][gi] = target[b][t*5+1] * nW - gi
             ty[b][best_n][gj][gi] = target[b][t*5+2] * nH - gj
-            tw[b][best_n][gj][gi] = math.log(torch.clamp(gw/anchors[anchor_step*best_n], min=0, max=99))
-            th[b][best_n][gj][gi] = math.log(torch.clamp(gh/anchors[anchor_step*best_n+1], min=0, max=99))
+            tw[b][best_n][gj][gi] = math.log(torch.clamp(gw/anchors[anchor_step*best_n], min=0, max=99999999))
+            th[b][best_n][gj][gi] = math.log(torch.clamp(gh/anchors[anchor_step*best_n+1], min=0, max=99999999))
             iou = bbox_iou(gt_box, pred_box, x1y1x2y2=False) # best_iou
             tconf[b][best_n][gj][gi] = iou
             tcls[b][best_n][gj][gi] = target[b][t*5]
@@ -169,11 +169,11 @@ class RegionLoss(nn.Module):
         # print("{}/{}".format(target.size(0), bef))
 
         t0 = time.time()
-        nB = output.data.size(0)
+        nB = output.item().size(0)
         nA = self.num_anchors
         nC = self.num_classes
-        nH = output.data.size(2)
-        nW = output.data.size(3)
+        nH = output.item().size(2)
+        nW = output.item().size(3)
 
         output   = output.view(nB, nA, (5+nC), nH, nW)
         x    = F.sigmoid(output.index_select(2, Variable(torch.cuda.LongTensor([0]))).view(nB, nA, nH, nW))
@@ -228,8 +228,11 @@ class RegionLoss(nn.Module):
         loss_h = self.coord_scale * nn.MSELoss(size_average=False)(h*coord_mask, th*coord_mask)/2.0
         loss_conf = nn.MSELoss(size_average=False)(conf*conf_mask, tconf*conf_mask)/2.0
         loss_cls = self.class_scale * nn.CrossEntropyLoss(size_average=False)(cls, tcls)
-        loss = loss_x + loss_y + loss_w + loss_h + loss_conf + loss_cls
+        
+        loss_total = loss_x + loss_y + loss_w + loss_h + loss_conf + loss_cls
         t4 = time.time()
+
+        loss_dict = {"loss_x": loss_x, "loss_y": loss_y, "loss_w": loss_w, "loss_h": loss_h, "loss_conf": loss_conf, "loss_cls": loss_cls}
         if False:
             print('-----------------------------------')
             print('        activation : %f' % (t1 - t0))
@@ -237,8 +240,9 @@ class RegionLoss(nn.Module):
             print('     build targets : %f' % (t3 - t2))
             print('       create loss : %f' % (t4 - t3))
             print('             total : %f' % (t4 - t0))
-        print('%d: nGT %d, recall %d, proposals %d, loss: x %f, y %f, w %f, h %f, conf %f, cls %f, total %f' % (self.seen, nGT, nCorrect, nProposals, loss_x.data[0], loss_y.data[0], loss_w.data[0], loss_h.data[0], loss_conf.data[0], loss_cls.data[0], loss.data[0]))
-        return loss
+#         printout = '%d: nGT %d, recall %d, proposals %d, loss: x %f, y %f, w %f, h %f, conf %f, cls %f, total %f' % (self.seen, nGT, nCorrect, nProposals, loss_x.data, loss_y.data, loss_w.data, loss_h.data, loss_conf.data, loss_cls.data, loss.data)
+        # print('%d: nGT %d, recall %d, proposals %d, loss: x %f, y %f, w %f, h %f, conf %f, cls %f, cls_new %f, total %f' % (self.seen, nGT, nCorrect, nProposals, loss_x.data[0], loss_y.data[0], loss_w.data[0], loss_h.data[0], loss_conf.data[0], loss_cls.data[0], loss_cls_new.data[0], loss.data[0]))
+        return loss_total, loss_dict
 
 class RegionLossV2(nn.Module):
     """
@@ -246,10 +250,10 @@ class RegionLossV2(nn.Module):
     """
     def __init__(self, num_classes=0, anchors=[], num_anchors=1):
         super(RegionLossV2, self).__init__()
-        self.num_classes = num_classes
-        self.anchors = anchors
-        self.num_anchors = num_anchors
-        self.anchor_step = len(anchors)/num_anchors
+        self.num_classes = int(num_classes)
+        self.anchors = [int(e) for e in anchors]
+        self.num_anchors = int(num_anchors)
+        self.anchor_step = int(len(anchors)/num_anchors)
         self.coord_scale = 1
         self.noobject_scale = 1
         self.object_scale = 5
@@ -327,9 +331,9 @@ class RegionLossV2(nn.Module):
             grid_x = torch.linspace(0, nW - 1, nW).repeat(nH, 1).repeat(nB * nA, 1, 1).view(nB * nA * nH * nW).cuda()
             grid_y = torch.linspace(0, nH - 1, nH).repeat(nW, 1).t().repeat(nB * nA, 1, 1).view(
                 nB * nA * nH * nW).cuda()
-            anchor_w = torch.Tensor(self.anchors).view(nA, self.anchor_step).index_select(1,
+            anchor_w = torch.Tensor(self.anchors).view(int(nA), int(self.anchor_step)).index_select(1,
                                                                                           torch.LongTensor([0])).cuda()
-            anchor_h = torch.Tensor(self.anchors).view(nA, self.anchor_step).index_select(1,
+            anchor_h = torch.Tensor(self.anchors).view(int(nA), int(self.anchor_step)).index_select(1,
                                                                                           torch.LongTensor([1])).cuda()
 
         else:
@@ -337,9 +341,9 @@ class RegionLossV2(nn.Module):
             grid_x = torch.linspace(0, nW - 1, nW).repeat(nH, 1).repeat(nB * nA, 1, 1).view(nB * nA * nH * nW)
             grid_y = torch.linspace(0, nH - 1, nH).repeat(nW, 1).t().repeat(nB * nA, 1, 1).view(
                 nB * nA * nH * nW)
-            anchor_w = torch.Tensor(self.anchors).view(nA, int(self.anchor_step)).index_select(1,
+            anchor_w = torch.Tensor(self.anchors).view(int(nA), int(self.anchor_step)).index_select(1,
                                                                                           torch.LongTensor([0]))
-            anchor_h = torch.Tensor(self.anchors).view(nA, int(self.anchor_step)).index_select(1,
+            anchor_h = torch.Tensor(self.anchors).view(int(nA), int(self.anchor_step)).index_select(1,
                                                                                           torch.LongTensor([1]))
 
         anchor_w = anchor_w.repeat(nB, 1).repeat(1, 1, nH*nW).view(nB*nA*nH*nW)
@@ -385,7 +389,7 @@ class RegionLossV2(nn.Module):
             # cls_mask   = Variable(cls_mask.view(-1, 1).repeat(1,cs).cuda())
             cls        = cls[Variable(cls_mask.view(-1, 1).repeat(1,cs).cuda())].view(-1, cs)  
     
-            tcls = Variable(tcls.view(-1)[cls_mask].long().cuda())
+            tcls = Variable(tcls.view(-1)[cls_mask.reshape(-1)].long().cuda())
         else:
             tx = Variable(tx)
             ty = Variable(ty)
@@ -419,7 +423,7 @@ class RegionLossV2(nn.Module):
         # loss_cls_new *= 10
         # loss_cls += loss_cls_new
 
-        loss = loss_x + loss_y + loss_w + loss_h + loss_conf + loss_cls
+        loss_total = loss_x + loss_y + loss_w + loss_h + loss_conf + loss_cls
         t4 = time.time()
         if False:
             print('-----------------------------------')
@@ -428,9 +432,13 @@ class RegionLossV2(nn.Module):
             print('     build targets : %f' % (t3 - t2))
             print('       create loss : %f' % (t4 - t3))
             print('             total : %f' % (t4 - t0))
-        print('%d: nGT %d, recall %d, proposals %d, loss: x %f, y %f, w %f, h %f, conf %f, cls %f, total %f' % (self.seen, nGT, nCorrect, nProposals, loss_x.data, loss_y.data, loss_w.data, loss_h.data, loss_conf.data, loss_cls.data, loss.data))
+
+
+        loss_dict = {"loss_x": loss_x, "loss_y": loss_y, "loss_w": loss_w, "loss_h": loss_h, "loss_conf": loss_conf, "loss_cls": loss_cls}
+        printout = '%d: nGT %d, recall %d, proposals %d, loss: x %f, y %f, w %f, h %f, conf %f, cls %f, total %f' % (self.seen, nGT, nCorrect, nProposals, loss_x.data, loss_y.data, loss_w.data, loss_h.data, loss_conf.data, loss_cls.data, loss_total.data)
+#         print('%d: nGT %d, recall %d, proposals %d, loss: x %f, y %f, w %f, h %f, conf %f, cls %f, total %f' % (self.seen, nGT, nCorrect, nProposals, loss_x.data, loss_y.data, loss_w.data, loss_h.data, loss_conf.data, loss_cls.data, loss.data))
         # print('%d: nGT %d, recall %d, proposals %d, loss: x %f, y %f, w %f, h %f, conf %f, cls %f, cls_new %f, total %f' % (self.seen, nGT, nCorrect, nProposals, loss_x.data[0], loss_y.data[0], loss_w.data[0], loss_h.data[0], loss_conf.data[0], loss_cls.data[0], loss_cls_new.data[0], loss.data[0]))
-        return loss
+        return loss_total, loss_dict, printout, self.seen
 
 
 def select_classes(pred, tgt, ids):
