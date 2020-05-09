@@ -10,6 +10,31 @@ from torch.autograd import Variable
 import struct # get_image_size
 import imghdr # get_image_size
 
+
+def xywh_to_xyxy(boxes):
+    # 将bbox的【x,y,w,h】转换成【x1,y1,x2,y2】
+    # 某些数据集例如 pascal_voc 的标注方式是采用【x，y，w，h】
+    """Convert [x y w h] box format to [x1 y1 x2 y2] format."""
+    return np.hstack((boxes[:, 0:2], boxes[:, 0:2] + boxes[:, 2:4] - 1))
+
+
+def xyxy_to_xywh(boxes):
+    # 上面函数的逆函数
+    """Convert [x1 y1 x2 y2] box format to [x y w h] format."""
+    return np.hstack((boxes[:, 0:2], boxes[:, 2:4] - boxes[:, 0:2] + 1))
+
+def one_hot_embedding(labels, num_classes):
+    '''Embedding labels to one-hot form.
+    Args:
+      labels: (LongTensor) class labels, sized [N,].
+      num_classes: (int) number of classes.
+    Returns:
+      (tensor) encoded labels, sized [N,#classes].
+    '''
+    y = torch.eye(num_classes)  # [D,D]
+    return y[labels]            # [N,D]
+
+
 def sigmoid(x):
     return 1.0/(math.exp(-x)+1.)
 
@@ -86,21 +111,30 @@ def nms(boxes, nms_thresh):
     if len(boxes) == 0:
         return boxes
 
+    # only_boxes = torch.zeros(len(boxes), 4)
+
     det_confs = torch.zeros(len(boxes))
     for i in range(len(boxes)):
-        det_confs[i] = 1-boxes[i][4]                
+        det_confs[i] = 1-boxes[i, 4]
+
+    #     only_boxes[i, :] = torch.FloatTensor(boxes[i][:4])
+    #
+    # only_boxes = torch.FloatTensor(xywh_to_xyxy(only_boxes[:, :4]))
+    # import torchvision.ops as ops
+    # out_boxes = ops.nms(only_boxes, torch.FloatTensor(det_confs), nms_thresh)
 
     _,sortIds = torch.sort(det_confs)
     out_boxes = []
     for i in range(len(boxes)):
         box_i = boxes[sortIds[i]]
-        if box_i[4] > 0:
+        if box_i[4]> 0:
             out_boxes.append(box_i)
             for j in range(i+1, len(boxes)):
                 box_j = boxes[sortIds[j]]
                 if bbox_iou(box_i, box_j, x1y1x2y2=False) > nms_thresh:
                     #print(box_i, box_j, bbox_iou(box_i, box_j, x1y1x2y2=False))
                     box_j[4] = 0
+
     return out_boxes
 
 def convert2cpu(gpu_matrix):
@@ -110,19 +144,20 @@ def convert2cpu_long(gpu_matrix):
     return torch.LongTensor(gpu_matrix.size()).copy_(gpu_matrix)
 
 def get_region_boxes(output, conf_thresh, num_classes, anchors, num_anchors, only_objectness=1, validation=False):
-    anchor_step = len(anchors)/num_anchors
+    anchor_step = int(len(anchors)/num_anchors)
     if output.dim() == 3:
         output = output.unsqueeze(0)
     batch = output.size(0)
+
     assert(output.size(1) == (5+num_classes)*num_anchors)
     h = output.size(2)
     w = output.size(3)
 
     t0 = time.time()
+    # all_boxes = torch.FloatTensor(output.size(0), h*w*num_anchors, 7).cuda()
     all_boxes = []
+
     output = output.view(batch*num_anchors, 5+num_classes, h*w).transpose(0,1).contiguous().view(5+num_classes, batch*num_anchors*h*w)
-
-
     grid_x = torch.linspace(0, w-1, w).repeat(h,1).repeat(batch*num_anchors, 1, 1).view(batch*num_anchors*h*w).cuda()
     grid_y = torch.linspace(0, h-1, h).repeat(w,1).t().repeat(batch*num_anchors, 1, 1).view(batch*num_anchors*h*w).cuda()
     xs = torch.sigmoid(output[0]) + grid_x
@@ -137,7 +172,7 @@ def get_region_boxes(output, conf_thresh, num_classes, anchors, num_anchors, onl
 
     det_confs = torch.sigmoid(output[4])
 
-    cls_confs = torch.nn.Softmax()(Variable(output[5:5+num_classes].transpose(0,1))).data
+    cls_confs = torch.nn.Softmax(0)(output[5:5+num_classes].transpose(0,1))
     cls_max_confs, cls_max_ids = torch.max(cls_confs, 1)
     cls_max_confs = cls_max_confs.view(-1)
     cls_max_ids = cls_max_ids.view(-1)
@@ -145,6 +180,9 @@ def get_region_boxes(output, conf_thresh, num_classes, anchors, num_anchors, onl
     
     sz_hw = h*w
     sz_hwa = sz_hw*num_anchors
+
+
+
     det_confs = convert2cpu(det_confs)
     cls_max_confs = convert2cpu(cls_max_confs)
     cls_max_ids = convert2cpu_long(cls_max_ids)
@@ -154,12 +192,18 @@ def get_region_boxes(output, conf_thresh, num_classes, anchors, num_anchors, onl
     hs = convert2cpu(hs)
     if validation:
         cls_confs = convert2cpu(cls_confs.view(-1, num_classes))
+    # cls_confs.view(-1, num_classes)
+
+
     t2 = time.time()
+
     for b in range(batch):
         boxes = []
+        # index = 0
         for cy in range(h):
             for cx in range(w):
                 for i in range(num_anchors):
+
                     ind = b*sz_hwa + i*sz_hw + cy*w + cx
                     det_conf =  det_confs[ind]
                     if only_objectness:
@@ -182,6 +226,8 @@ def get_region_boxes(output, conf_thresh, num_classes, anchors, num_anchors, onl
                                     box.append(tmp_conf)
                                     box.append(c)
                         boxes.append(box)
+                        # all_boxes[b, index, :] = box[:]
+                        # index += 1
         all_boxes.append(boxes)
     t3 = time.time()
     if False:

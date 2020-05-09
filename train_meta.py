@@ -112,23 +112,7 @@ max_epochs        = int(math.ceil(cfg.max_epoch*1./cfg.repeat)) if cfg.tuning el
 # print(num_workers)
 
 kwargs = {'num_workers': num_workers, 'pin_memory': True} if use_cuda else {'num_workers': 0, 'pin_memory': False}
-# test_loader = torch.utils.data.DataLoader(
-#     dataset.listDataset(testlist, shape=(init_width, init_height),
-#                    shuffle=False,
-#                    transform=transforms.Compose([
-#                        transforms.ToTensor(),
-#                    ]), train=False),
-#     batch_size=batch_size, shuffle=False, **kwargs)
-#
-# test_metaset = dataset.MetaDataset(metafiles=metadict, train=True)
-# test_metaloader = torch.utils.data.DataLoader(
-#     test_metaset,
-#     batch_size=test_metaset.batch_size,
-#     shuffle=False,
-#     # num_workers=num_workers//2,  ########################################################################
-#     num_workers=0,
-#     pin_memory=True
-# )
+
 
 # Adjust learning rate
 # factor = len(test_metaset.classes)
@@ -150,8 +134,29 @@ if use_cuda:
     else:
         model = model.cuda()
 
+
+
+test_loader = torch.utils.data.DataLoader(
+    dataset.listDataset(testlist, shape=(init_width, init_height),
+                   shuffle=False,
+                   transform=transforms.Compose([
+                       transforms.ToTensor(),
+                   ]), train=False),
+    batch_size=batch_size, shuffle=False, **kwargs)
+
+test_metaset = dataset.MetaDataset(metafiles=metadict, train=True)
+test_metaloader = torch.utils.data.DataLoader(
+    test_metaset,
+    batch_size=test_metaset.batch_size,
+    shuffle=False,
+    # num_workers=num_workers//2,  ########################################################################
+    num_workers=0,
+    pin_memory=True
+)
+
 optimizer = optim.SGD(model.parameters(),
-                      lr=learning_rate/batch_size,
+                      # lr=learning_rate,
+                      lr=3e-4,
                       momentum=momentum,
                       dampening=0,
                       weight_decay=decay*batch_size*factor)
@@ -159,7 +164,8 @@ optimizer = optim.SGD(model.parameters(),
 
 def adjust_learning_rate(optimizer, batch):
     """Sets the learning rate to the initial LR decayed by 10 every 30 epochs"""
-    lr = learning_rate
+    lr = round(learning_rate, 7)
+    # print(lr)
     for i in range(len(steps)):
         scale = scales[i] if i < len(scales) else 1
         if batch >= steps[i]:
@@ -169,13 +175,15 @@ def adjust_learning_rate(optimizer, batch):
         else:
             break
     for param_group in optimizer.param_groups:
-        param_group['lr'] = lr/batch_size
+        param_group['lr'] = round(lr/batch_size, 7)
+        # print(lr)
     return lr
 
 
 def train(epoch):
     global processed_batches
     t0 = time.time()
+
     if ngpus > 1:
         cur_model = model.module
     else:
@@ -183,15 +191,15 @@ def train(epoch):
 
     train_loader = torch.utils.data.DataLoader(
         dataset.listDataset(trainlist, shape=(init_width, init_height),
-                       shuffle=True,
-                       transform=transforms.Compose([
-                           # transforms.Resize([448, 448]),
-                           transforms.ToTensor(),
-                       ]), 
-                       train=True, 
-                       seen=cur_model.seen,
-                       batch_size=batch_size,
-                       num_workers=num_workers),
+                            shuffle=True,
+                            transform=transforms.Compose([
+                                # transforms.Resize([448, 448]),
+                                transforms.ToTensor(),
+                            ]),
+                            train=True,
+                            seen=cur_model.seen,
+                            batch_size=batch_size,
+                            num_workers=num_workers),
         batch_size=batch_size, shuffle=False, **kwargs)
     # print("block b nw is: ", batch_size, num_workers)
     metaset = dataset.MetaDataset(metafiles=metadict, train=True, num_workers=num_workers)
@@ -201,12 +209,16 @@ def train(epoch):
         # batch_size=batch_size,
         shuffle=False,
         num_workers=num_workers,
-        pin_memory=True ####################
+        pin_memory=True  ####################
     )
+
     # print("meta b nw is: ", batch_size, num_workers)
     metaloader = iter(metaloader)
 
-    lr = adjust_learning_rate(optimizer, processed_batches)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=2, verbose=False,
+                                               threshold=0.0001, threshold_mode='rel', cooldown=0, min_lr=0, eps=1e-08)
+    # lr = adjust_learning_rate(optimizer, processed_batches)
+    lr =  optimizer.param_groups[0]['lr']
     logging('epoch %d/%d, processed %d samples, lr %f' % (epoch, max_epochs, epoch * len(train_loader.dataset), lr))
 
     model.train()
@@ -225,13 +237,13 @@ def train(epoch):
             mask = mask.cuda()
             #target= target.cuda()
 #         t3 = time.time()
-        data, target = Variable(data), Variable(target)
-        metax, mask = Variable(metax), Variable(mask)
+#         data, target = Variable(data), Variable(target)
+#         metax, mask = Variable(metax), Variable(mask)
 #         t4 = time.time()
         optimizer.zero_grad()
 #         t5 = time.time()
         # print("input data shape: ", [data.shape, metax.shape, mask.shape])
-        output = model(data.float(), metax.float(), mask.float())  # torch.Size([1, 30, 13, 13])
+        output = model(data, metax, mask)  # torch.Size([bs*15, 30, 13, 13])
         # print("output shape: ", output.shape)
 #         t6 = time.time()
         region_loss.seen = region_loss.seen + data.data.size(0)
@@ -241,7 +253,8 @@ def train(epoch):
 #         t7 = time.time()
         loss_total.backward()
 #         t8 = time.time()
-        optimizer.step()
+#         optimizer.step()
+        scheduler.step(loss_total)
 #         t9 = time.time()
         if False and batch_idx > 1:
             avg_time[0] = avg_time[0] + (t2-t1)
@@ -266,14 +279,15 @@ def train(epoch):
 
 #         t1 = time.time()
         
+
         writer.add_scalar("scalar/trainLoss", loss_total.item(), cur_step)
         writer.add_scalars("scalar/separatedLoss", {"loss_conf": loss["loss_conf"].item(), "loss_cls": loss["loss_cls"].item()}, cur_step)
         writer.add_scalar("scalar/trainLr", lr, cur_step)
-        if batch_idx % 99 == 1:       
-            print(str(epoch+1) + '->' + printout)
+        if batch_idx % 49 == 1:
+            print(str(epoch+1) + "->" + printout)
             
-        del loss_total, loss, cur_step
-        torch.cuda.empty_cache()
+        # del loss_total, loss, cur_step
+        # torch.cuda.empty_cache()
             
     # print('')
     t1 = time.time()
@@ -290,64 +304,73 @@ def train(epoch):
         print("save checkpoint finished!")
 
 
-# def test(epoch):
-#     def truths_length(truths):
-#         for i in range(50):
-#             if truths[i][1] == 0:
-#                 return i
-#
-#     model.eval()
-#     if ngpus > 1:
-#         cur_model = model.module
-#     else:
-#         cur_model = model
-#     num_classes = cur_model.num_classes
-#     anchors     = cur_model.anchors
-#     num_anchors = cur_model.num_anchors
-#     total       = 0.0
-#     proposals   = 0.0
-#     correct     = 0.0
-#
-#     _test_metaloader = iter(test_metaloader)
-#     for batch_idx, (data, target) in enumerate(test_loader):
-#         metax, mask = _test_metaloader.next()
-#         if use_cuda:
-#             data = data.cuda()
-#             metax = metax.cuda()
-#             mask = mask.cuda()
-#         data = Variable(data, volatile=True)
-#         metax = Variable(metax, volatile=True)
-#         mask = Variable(mask, volatile=True)
-#         output = model(data, metax, mask).data
-#         all_boxes = get_region_boxes(output, conf_thresh, num_classes, anchors, num_anchors)
-#         for i in range(output.size(0)):
-#             boxes = all_boxes[i]
-#             boxes = nms(boxes, nms_thresh)
-#             truths = target[i].view(-1, 5)
-#             num_gts = truths_length(truths)
-#
-#             total = total + num_gts
-#
-#             for i in range(len(boxes)):
-#                 if boxes[i][4] > conf_thresh:
-#                     proposals = proposals+1
-#
-#             for i in range(num_gts):
-#                 box_gt = [truths[i][1], truths[i][2], truths[i][3], truths[i][4], 1.0, 1.0, truths[i][0]]
-#                 best_iou = 0
-#                 best_j = -1
-#                 for j in range(len(boxes)):
-#                     iou = bbox_iou(box_gt, boxes[j], x1y1x2y2=False)
-#                     if iou > best_iou:
-#                         best_j = j
-#                         best_iou = iou
-#                 if best_iou > iou_thresh and boxes[best_j][6] == box_gt[6]:
-#                     correct = correct+1
-#
-#     precision = 1.0*correct/(proposals+eps)
-#     recall = 1.0*correct/(total+eps)
-#     fscore = 2.0*precision*recall/(precision+recall+eps)
-#     logging("precision: %f, recall: %f, fscore: %f" % (precision, recall, fscore))
+def test(epoch):
+    def truths_length(truths):
+        for i in range(50):
+            if truths[i][1] == 0:
+                return i
+
+    model.eval()
+    if ngpus > 1:
+        cur_model = model.module
+    else:
+        cur_model = model
+    num_classes = cur_model.num_classes
+    anchors     = cur_model.anchors
+    num_anchors = cur_model.num_anchors
+    total       = 0.0
+    proposals   = 0.0
+    correct     = 0.0
+
+    _test_metaloader = iter(test_metaloader)
+    for batch_idx, (data, target) in enumerate(tqdm(test_loader)):
+        metax, mask = _test_metaloader.next()
+        if use_cuda:
+            data = data.cuda()
+            metax = metax.cuda()
+            mask = mask.cuda()
+        # data = Variable(data, volatile=True)
+        # metax = Variable(metax, volatile=True)
+        # mask = Variable(mask, volatile=True)
+        output = model(data, metax, mask).data
+
+        # print(output.shape)
+        all_boxes = get_region_boxes(output, conf_thresh, num_classes, anchors, num_anchors)
+        # output = output.reshape(-1, 15, *(output.shape[-2:])).data
+        # print(target.shape)
+        # np.reshape(target, (-1, 30))
+
+        all_boxes = np.asarray(all_boxes)
+        print(all_boxes.shape)
+        all_boxes = np.reshape(all_boxes, (32, -1, all_boxes.size(-1)))
+        print(all_boxes.shape)
+        for i in range(output.size(0)):
+            boxes = all_boxes[i]
+            boxes = nms(boxes, nms_thresh)
+            truths = target[i].view(-1, 5)
+            num_gts = truths_length(truths)
+            total = total + num_gts
+
+            for i in range(len(boxes)):
+                if boxes[i][4] > conf_thresh:
+                    proposals = proposals+1
+
+            for i in range(num_gts):
+                box_gt = [truths[i][1], truths[i][2], truths[i][3], truths[i][4], 1.0, 1.0, truths[i][0]]
+                best_iou = 0
+                best_j = -1
+                for j in range(len(boxes)):
+                    iou = bbox_iou(box_gt, boxes[j], x1y1x2y2=False)
+                    if iou > best_iou:
+                        best_j = j
+                        best_iou = iou
+                if best_iou > iou_thresh and boxes[best_j][6] == box_gt[6]:
+                    correct = correct+1
+
+    precision = 1.0*correct/(proposals+eps)
+    recall = 1.0*correct/(total+eps)
+    fscore = 2.0*precision*recall/(precision+recall+eps)
+    logging("precision: %f, recall: %f, fscore: %f" % (precision, recall, fscore))
 
 
 
@@ -360,8 +383,6 @@ else:
 #         print("<=====================================================>")
 #         print("<==================={}th epoch of {}====================>".format(epoch, int(max_epochs)))
 #         print("<=====================================================>")
-        train(epoch)
-        writer.close()
-        # test(epoch)
-        
-os.system('/root/shutdown.sh')
+#         train(epoch)
+        test(epoch)
+    writer.close()

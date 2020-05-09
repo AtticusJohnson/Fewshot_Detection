@@ -273,7 +273,7 @@ class listDataset(Dataset):
 
     @staticmethod
     def is_valid(imgpath):
-        print(imgpath)
+        # print(imgpath)
         labpath = listDataset.get_labpath(imgpath.rstrip())
         if os.path.getsize(labpath):
             bs = np.loadtxt(labpath)
