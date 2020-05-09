@@ -129,8 +129,8 @@ def build_targets(pred_boxes, target, anchors, num_anchors, num_classes, nH, nW,
             conf_mask[b][best_n][gj][gi] = object_scale
             tx[b][best_n][gj][gi] = target[b][t*5+1] * nW - gi
             ty[b][best_n][gj][gi] = target[b][t*5+2] * nH - gj
-            tw[b][best_n][gj][gi] = math.log(torch.clamp(gw/anchors[anchor_step*best_n], min=0, max=99999999))
-            th[b][best_n][gj][gi] = math.log(torch.clamp(gh/anchors[anchor_step*best_n+1], min=0, max=99999999))
+            tw[b][best_n][gj][gi] = math.log(torch.clamp(gw/anchors[anchor_step*best_n], min=0, max=99))
+            th[b][best_n][gj][gi] = math.log(torch.clamp(gh/anchors[anchor_step*best_n+1], min=0, max=99))
             iou = bbox_iou(gt_box, pred_box, x1y1x2y2=False) # best_iou
             tconf[b][best_n][gj][gi] = iou
             tcls[b][best_n][gj][gi] = target[b][t*5]
