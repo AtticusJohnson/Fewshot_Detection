@@ -55,6 +55,7 @@ def build_targets(pred_boxes, target, anchors, num_anchors, num_classes, nH, nW,
 
     nAnchors = nA*nH*nW
     nPixels  = nH*nW
+
     for b in range(nB):
         cur_pred_boxes = pred_boxes[b*nAnchors:(b+1)*nAnchors].t()
         cur_ious = torch.zeros(nAnchors)
@@ -383,7 +384,6 @@ class RegionLossV2(nn.Module):
             tw    = tw.cuda()
             th    = th.cuda()
             tconf = tconf.cuda()
-    
             coord_mask = coord_mask.cuda()
             conf_mask  = conf_mask.cuda().sqrt()
             # cls_mask   = Variable(cls_mask.view(-1, 1).repeat(1,cs).cuda())

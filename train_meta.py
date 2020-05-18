@@ -1,4 +1,21 @@
 from __future__ import print_function
+import pdb
+from models.tiny_yolo import TinyYoloNet
+from darknet_meta import Darknet
+from cfg import parse_cfg, cfg
+from utils import *
+import math
+import random
+import dataset
+from torch.autograd import Variable
+from torchvision import datasets, transforms
+import torch.backends.cudnn as cudnn
+import torch.optim as optim
+import torch.nn.functional as F
+import torch.nn as nn
+import torch
+import time
+from tensorboardX import SummaryWriter
 import sys
 from tqdm import tqdm
 import os
@@ -6,7 +23,6 @@ if len(sys.argv) != 5:
     print('Usage:')
     print('python train.py datacfg darknetcfg learnetcfg weightfile')
     exit()
-from tensorboardX import SummaryWriter
 writer = SummaryWriter(logdir='scalar')
 checkpoint_path = "checkpoints"
 if not os.path.exists("checkpoints"):
@@ -14,72 +30,54 @@ if not os.path.exists("checkpoints"):
 launchTimestamp = "20200509-1042"
 save_interval = 10
 
-import time
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import torch.optim as optim
-import torch.backends.cudnn as cudnn
-from torchvision import datasets, transforms
-from torch.autograd import Variable
-
-import dataset
-import random
-import math
-import os
-from utils import *
-from cfg import parse_cfg, cfg
-from darknet_meta import Darknet
-from models.tiny_yolo import TinyYoloNet
-import pdb
 
 # Training settings
-datacfg       = sys.argv[1]
-darknetcfg    = parse_cfg(sys.argv[2])
-learnetcfg    = parse_cfg(sys.argv[3])
-weightfile    = sys.argv[4]
+datacfg = sys.argv[1]
+darknetcfg = parse_cfg(sys.argv[2])
+learnetcfg = parse_cfg(sys.argv[3])
+weightfile = sys.argv[4]
 
-data_options  = read_data_cfg(datacfg)
-net_options   = darknetcfg[0]
-meta_options  = learnetcfg[0]
+data_options = read_data_cfg(datacfg)
+net_options = darknetcfg[0]
+meta_options = learnetcfg[0]
 
 # Configure options
 cfg.config_data(data_options)
 cfg.config_meta(meta_options)
 cfg.config_net(net_options)
 
-# Parameters 
-metadict      = data_options['meta']
-trainlist     = data_options['train']
+# Parameters
+metadict = data_options['meta']
+trainlist = data_options['train']
 
-testlist      = data_options['valid']
-backupdir     = data_options['backup']
-gpus          = data_options['gpus']  # e.g. 0,1,2,3
-ngpus         = len(gpus.split(','))
-num_workers   = int(data_options['num_workers'])
+testlist = data_options['valid']
+backupdir = data_options['backup']
+gpus = data_options['gpus']  # e.g. 0,1,2,3
+ngpus = len(gpus.split(','))
+num_workers = int(data_options['num_workers'])
 
-batch_size    = int(net_options['batch'])
-max_batches   = int(net_options['max_batches'])
+batch_size = int(net_options['batch'])
+max_batches = int(net_options['max_batches'])
 learning_rate = float(net_options['learning_rate'])
-momentum      = float(net_options['momentum'])
-decay         = float(net_options['decay'])
-steps         = [float(step) for step in net_options['steps'].split(',')]
-scales        = [float(scale) for scale in net_options['scales'].split(',')]
+momentum = float(net_options['momentum'])
+decay = float(net_options['decay'])
+steps = [float(step) for step in net_options['steps'].split(',')]
+scales = [float(scale) for scale in net_options['scales'].split(',')]
 
-#Train parameters
-use_cuda      = True #####################################################################
-seed          = int(time.time())
-eps           = 1e-5
-dot_interval  = 70  # batches
+# Train parameters
+use_cuda = True
+seed = int(time.time())
+eps = 1e-5
+dot_interval = 70  # batches
 # save_interval = 10  # epoches
 
 # Test parameters
-conf_thresh   = 0.25
-nms_thresh    = 0.4
-iou_thresh    = 0.5
+conf_thresh = 0.25
+nms_thresh = 0.4
+iou_thresh = 0.5
 
-## --------------------------------------------------------------------------
-## MAIN
+# --------------------------------------------------------------------------
+# MAIN
 backupdir = cfg.backup
 print('logging to ' + backupdir)
 if not os.path.exists(backupdir):
@@ -90,7 +88,7 @@ if use_cuda:
     os.environ['CUDA_VISIBLE_DEVICES'] = gpus
     torch.cuda.manual_seed(seed)
 
-model       = Darknet(darknetcfg, learnetcfg)
+model = Darknet(darknetcfg, learnetcfg)
 region_loss = model.loss
 
 model.load_weights(weightfile)
@@ -98,20 +96,22 @@ model.load_weights(weightfile)
 
 
 ###################################################
-### Meta-model parameters
-region_loss.seen  = model.seen
+# Meta-model parameters
+region_loss.seen = model.seen
 processed_batches = 0 if cfg.tuning else model.seen/batch_size
-trainlist         = dataset.build_dataset(data_options)
-nsamples          = len(trainlist)
-init_width        = model.width
-init_height       = model.height
-init_epoch        = 0 if cfg.tuning else int(model.seen/nsamples)
-max_epochs        = max_batches*batch_size/nsamples+1
-max_epochs        = int(math.ceil(cfg.max_epoch*1./cfg.repeat)) if cfg.tuning else max_epochs 
+trainlist = dataset.build_dataset(data_options)
+nsamples = len(trainlist)
+init_width = model.width
+init_height = model.height
+init_epoch = 0 if cfg.tuning else int(model.seen/nsamples)
+max_epochs = max_batches*batch_size/nsamples+1
+max_epochs = int(math.ceil(cfg.max_epoch*1./cfg.repeat)
+                 ) if cfg.tuning else max_epochs
 # print(cfg.repeat, nsamples, max_batches, batch_size)
 # print(num_workers)
 
-kwargs = {'num_workers': num_workers, 'pin_memory': True} if use_cuda else {'num_workers': 0, 'pin_memory': False}
+kwargs = {'num_workers': num_workers, 'pin_memory': True} if use_cuda else {
+    'num_workers': 0, 'pin_memory': False}
 
 
 # Adjust learning rate
@@ -135,13 +135,12 @@ if use_cuda:
         model = model.cuda()
 
 
-
 test_loader = torch.utils.data.DataLoader(
     dataset.listDataset(testlist, shape=(init_width, init_height),
-                   shuffle=False,
-                   transform=transforms.Compose([
-                       transforms.ToTensor(),
-                   ]), train=False),
+                        shuffle=False,
+                        transform=transforms.Compose([
+                            transforms.ToTensor(),
+                        ]), train=False),
     batch_size=batch_size, shuffle=False, **kwargs)
 
 test_metaset = dataset.MetaDataset(metafiles=metadict, train=True)
@@ -201,25 +200,28 @@ def train(epoch):
                             batch_size=batch_size,
                             num_workers=num_workers),
         batch_size=batch_size, shuffle=False, **kwargs)
+        
     # print("block b nw is: ", batch_size, num_workers)
-    metaset = dataset.MetaDataset(metafiles=metadict, train=True, num_workers=num_workers)
+    metaset = dataset.MetaDataset(
+        metafiles=metadict, train=True, num_workers=num_workers)
     metaloader = torch.utils.data.DataLoader(
         metaset,
         batch_size=metaset.batch_size,
         # batch_size=batch_size,
         shuffle=False,
         num_workers=num_workers,
-        pin_memory=True  ####################
+        pin_memory=True
     )
 
     # print("meta b nw is: ", batch_size, num_workers)
     metaloader = iter(metaloader)
 
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=2, verbose=False,
-                                               threshold=0.0001, threshold_mode='rel', cooldown=0, min_lr=0, eps=1e-08)
+                                                           threshold=0.0001, threshold_mode='rel', cooldown=0, min_lr=0, eps=1e-08)
     # lr = adjust_learning_rate(optimizer, processed_batches)
-    lr =  optimizer.param_groups[0]['lr']
-    logging('epoch %d/%d, processed %d samples, lr %f' % (epoch, max_epochs, epoch * len(train_loader.dataset), lr))
+    lr = optimizer.param_groups[0]['lr']
+    logging('epoch %d/%d, processed %d samples, lr %f' %
+            (epoch, max_epochs, epoch * len(train_loader.dataset), lr))
 
     model.train()
 #     t1 = time.time()
@@ -248,7 +250,8 @@ def train(epoch):
 #         t6 = time.time()
         region_loss.seen = region_loss.seen + data.data.size(0)
         # ("target shape :", target.shape)
-        loss_total, loss, printout, cur_step = region_loss(output, target.float(), use_cuda)
+        loss_total, loss, printout, cur_step = region_loss(
+            output, target.float(), use_cuda)
 
 #         t7 = time.time()
         loss_total.backward()
@@ -278,17 +281,17 @@ def train(epoch):
             print('           total : %f' % (avg_time[8]/(batch_idx)))
 
 #         t1 = time.time()
-        
 
         writer.add_scalar("scalar/trainLoss", loss_total.item(), cur_step)
-        writer.add_scalars("scalar/separatedLoss", {"loss_conf": loss["loss_conf"].item(), "loss_cls": loss["loss_cls"].item()}, cur_step)
+        writer.add_scalars("scalar/separatedLoss", {"loss_conf": loss["loss_conf"].item(
+        ), "loss_cls": loss["loss_cls"].item()}, cur_step)
         writer.add_scalar("scalar/trainLr", lr, cur_step)
         if batch_idx % 49 == 1:
             print(str(epoch+1) + "->" + printout)
-            
+
         # del loss_total, loss, cur_step
         # torch.cuda.empty_cache()
-            
+
     # print('')
     t1 = time.time()
     logging('training with %f samples/s' % (len(train_loader.dataset)/(t1-t0)))
@@ -316,11 +319,11 @@ def test(epoch):
     else:
         cur_model = model
     num_classes = cur_model.num_classes
-    anchors     = cur_model.anchors
+    anchors = cur_model.anchors
     num_anchors = cur_model.num_anchors
-    total       = 0.0
-    proposals   = 0.0
-    correct     = 0.0
+    total = 0.0
+    proposals = 0.0
+    correct = 0.0
 
     _test_metaloader = iter(test_metaloader)
     for batch_idx, (data, target) in enumerate(tqdm(test_loader)):
@@ -335,7 +338,8 @@ def test(epoch):
         output = model(data, metax, mask).data
 
         # print(output.shape)
-        all_boxes = get_region_boxes(output, conf_thresh, num_classes, anchors, num_anchors)
+        all_boxes = get_region_boxes(
+            output, conf_thresh, num_classes, anchors, num_anchors)
         # output = output.reshape(-1, 15, *(output.shape[-2:])).data
         # print(target.shape)
         # np.reshape(target, (-1, 30))
@@ -356,7 +360,8 @@ def test(epoch):
                     proposals = proposals+1
 
             for i in range(num_gts):
-                box_gt = [truths[i][1], truths[i][2], truths[i][3], truths[i][4], 1.0, 1.0, truths[i][0]]
+                box_gt = [truths[i][1], truths[i][2], truths[i]
+                          [3], truths[i][4], 1.0, 1.0, truths[i][0]]
                 best_iou = 0
                 best_j = -1
                 for j in range(len(boxes)):
@@ -370,8 +375,8 @@ def test(epoch):
     precision = 1.0*correct/(proposals+eps)
     recall = 1.0*correct/(total+eps)
     fscore = 2.0*precision*recall/(precision+recall+eps)
-    logging("precision: %f, recall: %f, fscore: %f" % (precision, recall, fscore))
-
+    logging("precision: %f, recall: %f, fscore: %f" %
+            (precision, recall, fscore))
 
 
 evaluate = False
@@ -380,9 +385,9 @@ if evaluate:
     # test(0)
 else:
     for epoch in range(init_epoch, int(max_epochs)):
-#         print("<=====================================================>")
-#         print("<==================={}th epoch of {}====================>".format(epoch, int(max_epochs)))
-#         print("<=====================================================>")
-#         train(epoch)
+        #         print("<=====================================================>")
+        #         print("<==================={}th epoch of {}====================>".format(epoch, int(max_epochs)))
+        #         print("<=====================================================>")
+        #         train(epoch)
         test(epoch)
     writer.close()
