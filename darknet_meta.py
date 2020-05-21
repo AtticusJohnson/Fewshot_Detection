@@ -23,14 +23,14 @@ def maybe_repeat(x1, x2):
         shape = x1.shape[1:]
         nc = n2 // n1
         x1 = x1.repeat(nc, *[1]*x1.dim())
-        x1 = x1.transpose(0, 1).contiguous()
+        x1 = x1.transpose(0,1).contiguous()
         x1 = x1.view(-1, *shape)
     else:
         assert n1 % n2 == 0
         shape = x2.shape[1:]
         nc = n1 // n2
         x2 = x2.repeat(nc, *[1]*x2.dim())
-        x2 = x2.transpose(0, 1).contiguous()
+        x2 = x2.transpose(0,1).contiguous()
         x2 = x2.view(-1, *shape)
     return x1, x2
 
@@ -49,35 +49,13 @@ class MaxPoolStride1(nn.Module):
         super(MaxPoolStride1, self).__init__()
 
     def forward(self, x):
-        x = F.max_pool2d(F.pad(x, (0, 1, 0, 1), mode='replicate'), 2, stride=1)
+        x = F.max_pool2d(F.pad(x, (0,1,0,1), mode='replicate'), 2, stride=1)
         return x
 
-
 class Reorg(nn.Module):
-    '''
-    tensor([[[ 1.,  2.,  3.,  4.],
-         [ 5.,  6.,  7.,  8.],
-         [ 9., 10., 11., 12.],
-         [13., 14., 15., 16.]]])
-
-    after x[0] is:
-    tensor([[ 1.,  3.],
-            [ 9., 11.]])
-    after x[1] is:
-    tensor([[ 2.,  4.],
-            [10., 12.]])
-    after x[2] is:
-    tensor([[ 5.,  7.],
-            [13., 15.]])
-    after x[3] is:
-    tensor([[ 6.,  8.],
-            [14., 16.]])
-    '''
-
     def __init__(self, stride=2):
         super(Reorg, self).__init__()
         self.stride = stride
-
     def forward(self, x):
         stride = self.stride
         assert(x.data.dim() == 4)
@@ -89,12 +67,9 @@ class Reorg(nn.Module):
         assert(W % stride == 0)
         ws = stride
         hs = stride
-        x = x.view(B, C, int(H/hs), hs, int(W/ws),
-                   ws).transpose(3, 4).contiguous()
-        x = x.view(B, C, int(H/hs*W/ws), int(hs*ws)
-                   ).transpose(2, 3).contiguous()
-        x = x.view(B, C, int(hs*ws), int(H/hs), int(W/ws)
-                   ).transpose(1, 2).contiguous()
+        x = x.view(B, C, int(H/hs), hs, int(W/ws), ws).transpose(3,4).contiguous()
+        x = x.view(B, C, int(H/hs*W/ws), int(hs*ws)).transpose(2,3).contiguous()
+        x = x.view(B, C, int(hs*ws), int(H/hs), int(W/ws)).transpose(1,2).contiguous()
         x = x.view(B, int(hs*ws*C), int(H/hs), int(W/ws))
         return x
 
@@ -108,16 +83,12 @@ class EmptyModule(nn.Module):
         return x
 
 # support route shortcut and reorg
-
-
 class Darknet(nn.Module):
     def __init__(self, darknet_file, learnet_file):
         super(Darknet, self).__init__()
-        self.blocks = darknet_file if isinstance(
-            darknet_file, list) else parse_cfg(darknet_file)
-        self.learnet_blocks = learnet_file if isinstance(
-            learnet_file, list) else parse_cfg(learnet_file)
-        self.models = self.create_network(self.blocks)  # merge conv, bn,leaky
+        self.blocks = darknet_file if isinstance(darknet_file, list) else parse_cfg(darknet_file)
+        self.learnet_blocks = learnet_file if isinstance(learnet_file, list) else parse_cfg(learnet_file)
+        self.models = self.create_network(self.blocks) # merge conv, bn,leaky
         self.learnet_models = self.create_network(self.learnet_blocks)
         self.loss = self.models[len(self.models)-1]  # 最后一层
 
@@ -130,7 +101,7 @@ class Darknet(nn.Module):
             self.anchor_step = self.loss.anchor_step
             self.num_classes = self.loss.num_classes
 
-        self.header = torch.IntTensor([0, 0, 0, 0])
+        self.header = torch.IntTensor([0,0,0,0])
         self.seen = 0
 
     def meta_forward(self, metax, mask):
@@ -167,19 +138,19 @@ class Darknet(nn.Module):
 
         for block in self.blocks:
             ind = ind + 1
-            # if ind > 0:
+            #if ind > 0:
             #    return x
 
             if block['type'] == 'net':
                 continue
             elif block['type'] == 'convolutional' or \
-                    block['type'] == 'maxpool' or \
-                    block['type'] == 'reorg' or \
-                    block['type'] == 'avgpool' or \
-                    block['type'] == 'softmax' or \
-                    block['type'] == 'connected' or \
-                    block['type'] == 'globalavg' or \
-                    block['type'] == 'globalmax':
+                 block['type'] == 'maxpool' or \
+                 block['type'] == 'reorg' or \
+                 block['type'] == 'avgpool' or \
+                 block['type'] == 'softmax' or \
+                 block['type'] == 'connected' or \
+                 block['type'] == 'globalavg' or \
+                 block['type'] == 'globalmax':
                 # print("dynamic shape is: ", dynamic_weights[dynamic_cnt].shape)
                 if self.is_dynamic(block):
                     x = self.models[ind]((x, dynamic_weights[dynamic_cnt]))
@@ -200,7 +171,7 @@ class Darknet(nn.Module):
                         x = (x1, x2)
                     else:
                         x1, x2 = maybe_repeat(x1, x2)
-                        x = torch.cat((x1, x2), 1)
+                        x = torch.cat((x1,x2),1)
                     outputs[ind] = x
             elif block['type'] == 'shortcut':
                 from_layer = int(block['from'])
@@ -208,7 +179,7 @@ class Darknet(nn.Module):
                 from_layer = from_layer if from_layer > 0 else from_layer + ind
                 x1 = outputs[from_layer]
                 x2 = outputs[ind-1]
-                x = x1 + x2
+                x  = x1 + x2
                 if activation == 'leaky':
                     x = F.leaky_relu(x, 0.1, inplace=True)
                 elif activation == 'relu':
@@ -226,7 +197,7 @@ class Darknet(nn.Module):
             else:
                 print('unknown type %s' % (block['type']))
         return x
-
+        
     def forward(self, x, metax, mask, ids=None):
         # pdb.set_trace()
         dynamic_weights = self.meta_forward(metax, mask)
@@ -243,7 +214,7 @@ class Darknet(nn.Module):
         models = nn.ModuleList()
 
         prev_filters = 3
-        out_filters = []
+        out_filters =[]
         conv_id = 0
         dynamic_count = 0
         for block in blocks:
@@ -263,10 +234,8 @@ class Darknet(nn.Module):
                 bias = bool(int(block['bias'])) if 'bias' in block else True
 
                 if self.is_dynamic(block):
-                    partial = int(block['partial']
-                                  ) if 'partial' in block else None
-                    Conv2d = dynamic_conv2d(
-                        dynamic_count == 0, partial=partial)
+                    partial = int(block['partial']) if 'partial' in block else None
+                    Conv2d = dynamic_conv2d(dynamic_count == 0, partial=partial)
 
                     dynamic_count += 1
                     # print("it used dynamic conv {} times!!!".format(dynamic_count))
@@ -289,11 +258,9 @@ class Darknet(nn.Module):
                         'conv{0}'.format(conv_id),
                         Conv2d(prev_filters, filters, kernel_size, stride, pad, groups=groups, bias=bias))
                 if activation == 'leaky':
-                    model.add_module('leaky{0}'.format(
-                        conv_id), nn.LeakyReLU(0.1, inplace=True))
+                    model.add_module('leaky{0}'.format(conv_id), nn.LeakyReLU(0.1, inplace=True))
                 elif activation == 'relu':
-                    model.add_module('relu{0}'.format(
-                        conv_id), nn.ReLU(inplace=True))
+                    model.add_module('relu{0}'.format(conv_id), nn.ReLU(inplace=True))
                 prev_filters = filters
                 out_filters.append(prev_filters)
                 models.append(model)
@@ -336,8 +303,7 @@ class Darknet(nn.Module):
                     prev_filters = out_filters[layers[0]]
                 elif len(layers) == 2:
                     assert(layers[0] == ind - 1)
-                    prev_filters = out_filters[layers[0]
-                                               ] + out_filters[layers[1]]
+                    prev_filters = out_filters[layers[0]] + out_filters[layers[1]]
                 out_filters.append(prev_filters)
                 models.append(EmptyModule())
             elif block['type'] == 'shortcut':
@@ -351,12 +317,12 @@ class Darknet(nn.Module):
                     model = nn.Linear(prev_filters, filters)
                 elif block['activation'] == 'leaky':
                     model = nn.Sequential(
-                        nn.Linear(prev_filters, filters),
-                        nn.LeakyReLU(0.1, inplace=True))
+                               nn.Linear(prev_filters, filters),
+                               nn.LeakyReLU(0.1, inplace=True))
                 elif block['activation'] == 'relu':
                     model = nn.Sequential(
-                        nn.Linear(prev_filters, filters),
-                        nn.ReLU(inplace=True))
+                               nn.Linear(prev_filters, filters),
+                               nn.ReLU(inplace=True))
                 prev_filters = filters
                 out_filters.append(prev_filters)
                 models.append(model)
@@ -389,7 +355,7 @@ class Darknet(nn.Module):
                 models.append(model)
             else:
                 print('unknown type %s' % (block['type']))
-
+    
         # pdb.set_trace()
         return models
 
@@ -398,7 +364,7 @@ class Darknet(nn.Module):
         header = np.fromfile(fp, count=4, dtype=np.int32)
         self.header = torch.from_numpy(header)
         self.seen = self.header[3]
-        buf = np.fromfile(fp, dtype=np.float32)
+        buf = np.fromfile(fp, dtype = np.float32)
         fp.close()
 
         start = 0
@@ -413,12 +379,12 @@ class Darknet(nn.Module):
                 elif block['type'] == 'convolutional':
                     model = models[ind]
                     if self.is_dynamic(block) and model[0].weight is None:
-                        continue
+                        continue    
                     batch_normalize = int(block['batch_normalize'])
                     if batch_normalize:
                         start = load_conv_bn(buf, start, model[0], model[1])
                     else:
-
+                        
                         start = load_conv(buf, start, model[0])
                 elif block['type'] == 'connected':
                     model = models[ind]

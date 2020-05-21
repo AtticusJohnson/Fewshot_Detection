@@ -8,7 +8,8 @@ Implementation for the paper:
 
 Our code is based on  [https://github.com/marvis/pytorch-yolo2](https://github.com/marvis/pytorch-yolo2) and developed with  Python 2.7 & PyTorch 0.3.1.
 
-
+## MyNote
+The num_classes is the num of classes for 1 grid.
 
 
 
@@ -107,12 +108,12 @@ wget http://pjreddie.com/media/files/darknet19_448.conv.23
 
 + Train The Model
 ```
-python train_meta.py cfgs/metayolo.data cfgs/darknet_dynamic.cfg cfgs/reweighting_net.cfg darknet19_448.conv.23
+python train_meta.py cfg/metayolo.data cfg/darknet_dynamic.cfg cfg/reweighting_net.cfg darknet19_448.conv.23
 ```
 
 + Evaluate the Model
 ```
-python valid_ensemble.py cfgs/metayolo.data cfgs/darknet_dynamic.cfg cfgs/reweighting_net.cfg path/toweightfile
+python valid_ensemble.py cfg/metayolo.data cfg/darknet_dynamic.cfg cfg/reweighting_net.cfg path/toweightfile
 python scripts/voc_eval.py results/path/to/comp4_det_test_
 ```
 

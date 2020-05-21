@@ -13,9 +13,12 @@ from image import *
 from cfg import cfg
 from collections import defaultdict
 import pdb
+import time
+
 
 def topath(p):
     return p.replace('scratch', 'tmp_scratch/basilisk')
+
 
 def loadlines(root, checkvalid=True):
     if is_dict(root):
@@ -40,13 +43,13 @@ def loadlines(root, checkvalid=True):
 
 
 def is_valid(imgpath, withnovel=True):
-#     print(imagepath)
+    #     print(imagepath)
     labpath = listDataset.get_labpath(imgpath.rstrip())
     if os.path.getsize(labpath):
         bs = np.loadtxt(labpath)
         if bs is not None:
             bs = np.reshape(bs, (-1, 5))
-            clsset = set(bs[:,0].astype(np.int).tolist())
+            clsset = set(bs[:, 0].astype(np.int).tolist())
             if withnovel:
                 # Check whether an image contains base objects
                 if not clsset.isdisjoint(set(cfg.base_ids)):
@@ -54,7 +57,7 @@ def is_valid(imgpath, withnovel=True):
             else:
                 # Check whether an image contains base objects only
                 if clsset.isdisjoint(set(cfg.novel_ids)):
-                    return True 
+                    return True
 
     return False
 
@@ -72,7 +75,7 @@ def build_dataset(dataopt):
             return loadlines(dataopt['meta']) * cfg.repeat
         else:
             metalist, metacnt = load_metadict(dataopt['meta'], cfg.repeat)
-            return build_fewset(dataopt['train'], metalist, metacnt, cfg.shot*cfg.repeat) 
+            return build_fewset(dataopt['train'], metalist, metacnt, cfg.shot * cfg.repeat)
 
 
 def load_metadict(metapath, repeat=1):
@@ -83,7 +86,7 @@ def load_metadict(metapath, repeat=1):
             if len(pair) == 2:
                 pass
             elif len(pair) == 4:
-                pair = [pair[0]+' '+pair[1], pair[2]+' '+pair[3]]
+                pair = [pair[0] + ' ' + pair[1], pair[2] + ' ' + pair[3]]
             else:
                 raise NotImplementedError('{} not recognized'.format(pair))
             files.append(pair)
@@ -99,20 +102,20 @@ def load_metadict(metapath, repeat=1):
     metalist = set(sum(metadict.values(), []))
 
     # Count bboxes
-    metacnt = {c:0 for c in metadict.keys()}
+    metacnt = {c: 0 for c in metadict.keys()}
     for imgpath in metalist:
         labpath = listDataset.get_labpath(imgpath.strip())
         # Load converted annotations
         bs = np.loadtxt(labpath)
         bs = np.reshape(bs, (-1, 5))
-        bcls = bs[:,0].astype(np.int).tolist()
+        bcls = bs[:, 0].astype(np.int).tolist()
         for ci in set(bcls):
             metacnt[cfg.classes[ci]] += bcls.count(ci)
 
     for c in metacnt.keys():
         metacnt[c] *= repeat
 
-    metalist =  list(metalist) * repeat
+    metalist = list(metalist) * repeat
     return metalist, metacnt
 
 
@@ -137,7 +140,7 @@ def build_fewset(imglist, metalist, metacnt, shot, replace=True):
         # Load converted annotations
         bs = np.loadtxt(labpath)
         bs = np.reshape(bs, (-1, 5))
-        bcls = bs[:,0].astype(np.int).tolist()
+        bcls = bs[:, 0].astype(np.int).tolist()
 
         if bs.shape[0] > 3:
             continue
@@ -173,13 +176,13 @@ def build_fewset(imglist, metalist, metacnt, shot, replace=True):
 class listDataset(Dataset):
 
     def __init__(self, root,
-            shape=None,
-            shuffle=True,
-            transform=None,
-            target_transform=None,
-            train=False, seen=0,
-            batch_size=64,
-            num_workers=4):
+                 shape=None,
+                 shuffle=True,
+                 transform=None,
+                 target_transform=None,
+                 train=False, seen=0,
+                 batch_size=64,
+                 num_workers=4):
         self.train = train
 
         if isinstance(root, list):
@@ -205,7 +208,7 @@ class listDataset(Dataset):
         if shuffle:
             random.shuffle(self.lines)
 
-        self.nSamples  = len(self.lines)
+        self.nSamples = len(self.lines)
         self.transform = transform
         self.target_transform = target_transform
         self.shape = shape
@@ -220,38 +223,47 @@ class listDataset(Dataset):
     def __getitem__(self, index):
         assert index <= len(self), 'index range error'
         imgpath = self.lines[index].rstrip()
+        ###### basic num: 256000 finetunes num: 13800
+        #         bs = 64
+        #         batchs = 4000
 
-        bs = 64
-        batchs = 4000
-        if self.train and index % bs== 0 and cfg.data != 'coco' and cfg.multiscale:
+        bs = 24
+        batchs = 572
+        num_samples = batchs * bs
+        #############################################
+        # tt1 = time.time()
+        if self.train and index % bs == 0 and cfg.data != 'coco' and cfg.multiscale:
             if self.first_batch:
                 width = 19 * 32
                 self.shape = (width, width)
                 self.first_batch = False
-            elif self.seen < batchs*bs:
-                width = 13*32
+            elif self.seen < num_samples:
+                width = 13 * 32
                 self.shape = (width, width)
-            elif self.seen < 2*batchs*bs:
-                width = (random.randint(0,3) + 13)*32
+            elif self.seen < 2 * num_samples:
+                width = (random.randint(0, 3) + 13) * 32
                 self.shape = (width, width)
-            elif self.seen < 3*batchs*bs:
-                width = (random.randint(0,5) + 12)*32
+            elif self.seen < 3 * num_samples:
+                width = (random.randint(0, 5) + 12) * 32
                 self.shape = (width, width)
-            elif self.seen < 4*batchs*bs:
-                width = (random.randint(0,7) + 11)*32
+            elif self.seen < 4 * num_samples:
+                width = (random.randint(0, 7) + 11) * 32
                 self.shape = (width, width)
-            else: # self.seen < 20000*64:
+            else:  # self.seen < 20000*64:
                 # width = (random.randint(1,7) + 10)*32
-                width = (random.randint(0,9) + 10)*32
+                width = (random.randint(0, 9) + 10) * 32
                 self.shape = (width, width)
-
+        # tt2 = time.time()
         jitter = 0.2
         hue = 0.1
-        saturation = 1.5 
+        saturation = 1.5
         exposure = 1.5
 
         labpath = listDataset.get_labpath(imgpath)
-        img, label = load_data_detection(imgpath, labpath, self.shape, jitter, hue, saturation, exposure, data_aug=self.train)
+        # tt = time.time()
+        img, label = load_data_detection(imgpath, labpath, self.shape, jitter, hue, saturation, exposure,
+                                         data_aug=self.train)
+        # tt3 = time.time()
         label = torch.from_numpy(label)
 
         if self.transform is not None:
@@ -259,16 +271,17 @@ class listDataset(Dataset):
 
         if self.target_transform is not None:
             label = self.target_transform(label)
-
+        # tt4 = time.time()
         self.seen = self.seen + self.num_workers
+        # print(f'img_path:{tt-tt2}; load:{tt3-tt};')
         return (img, label)
 
     @staticmethod
     def get_labpath(imgpath):
         subdir = 'labels'
         labpath = imgpath.replace('images', subdir) \
-                         .replace('JPEGImages', subdir) \
-                         .replace('.jpg', '.txt').replace('.png','.txt')
+            .replace('JPEGImages', subdir) \
+            .replace('.jpg', '.txt').replace('.png', '.txt')
         return labpath
 
     @staticmethod
@@ -279,7 +292,7 @@ class listDataset(Dataset):
             bs = np.loadtxt(labpath)
             if bs is not None:
                 bs = np.reshape(bs, (-1, 5))
-                clsset = set(bs[:,0].astype(np.int).tolist())
+                clsset = set(bs[:, 0].astype(np.int).tolist())
                 if not clsset.isdisjoint(set(cfg.base_ids)):
                     return True
         return False
@@ -287,13 +300,13 @@ class listDataset(Dataset):
 
 class MetaDataset(Dataset):
     def __init__(self,
-            metafiles,
-            transform=None,
-            target_transform=None,
-            train=False,
-            num_workers=4,
-            ensemble=False,
-            with_ids=False):
+                 metafiles,
+                 transform=None,
+                 target_transform=None,
+                 train=False,
+                 num_workers=4,
+                 ensemble=False,
+                 with_ids=False):
 
         # Backup labeled image paths (for meta-model)
         if train:
@@ -320,7 +333,7 @@ class MetaDataset(Dataset):
                 if len(pair) == 2:
                     pass
                 elif len(pair) == 4:
-                    pair = [pair[0]+' '+pair[1], pair[2]+' '+pair[3]]
+                    pair = [pair[0] + ' ' + pair[1], pair[2] + ' ' + pair[3]]
                 else:
                     raise NotImplementedError('{} not recognized'.format(pair))
                 metafiles.append(pair)
@@ -334,7 +347,7 @@ class MetaDataset(Dataset):
                     lines = [topath(l) for l in imgf.readlines()]
                     self.metalines[i] = lines
                     if ensemble:
-                        metainds[i] = list(zip([i]*len(lines), list(range(len(lines)))))
+                        metainds[i] = list(zip([i] * len(lines), list(range(len(lines)))))
                     else:
                         inds = np.random.choice(range(len(lines)), nbatch).tolist()
                         metainds[i] = list(zip([i] * nbatch, inds))
@@ -377,17 +390,16 @@ class MetaDataset(Dataset):
 
         self.nSamples = len(self.inds)
 
-
     def __len__(self):
         return self.nSamples
 
     def get_img_mask(self, img, box, merge=True):
         w, h = self.mask_shape
 
-        x1 = int(max(0, round((box[0] - box[2]/2) * w)))
-        y1 = int(max(0, round((box[1] - box[3]/2) * h)))
-        x2 = int(min(w, round((box[0] + box[2]/2) * w)))
-        y2 = int(min(h, round((box[1] + box[3]/2) * h)))
+        x1 = int(max(0, round((box[0] - box[2] / 2) * w)))
+        y1 = int(max(0, round((box[1] - box[3] / 2) * h)))
+        x2 = int(min(w, round((box[0] + box[2] / 2) * w)))
+        y2 = int(min(h, round((box[1] + box[3] / 2) * h)))
 
         if cfg.metain_type in [3, 4]:
             croped = img.crop((x1, y1, x2, y2)).resize(img.size)
@@ -404,14 +416,14 @@ class MetaDataset(Dataset):
             mask[:, y1:y2, x1:x2] = 1
 
         if merge:
-            return torch.cat([img, mask]) 
+            return torch.cat([img, mask])
         else:
             return img, mask
 
     def get_metaimg(self, clsid, imgpath):
         jitter = 0.2
         hue = 0.1
-        saturation = 1.5 
+        saturation = 1.5
         exposure = 1.5
 
         if isinstance(imgpath, int):
@@ -438,7 +450,7 @@ class MetaDataset(Dataset):
 
         # In case the selected meta image has only difficult objects
         while True and not self.ensemble:
-        # while True:
+            # while True:
             meta_imgpath = random.sample(self.metalines[clsid], 1)[0].rstrip()
             meta_img, meta_lab = self.get_metaimg(clsid, meta_imgpath)
             if not meta_lab:
@@ -455,7 +467,7 @@ class MetaDataset(Dataset):
         print('===> filtering...')
         _cnt = 0
         for clsid, metaind in inds:
-#             print('|{}/{}'.format(_cnt, len(inds)))
+            #             print('|{}/{}'.format(_cnt, len(inds)))
             _cnt += 1
             img, mask = self.get_metain(clsid, metaind)
             if img is not None:
@@ -474,20 +486,20 @@ class MetaDataset(Dataset):
             return (img, mask, clsid)
         else:
             return (img, mask)
-   
+
     @staticmethod
     def get_labpath(imgpath, cls_name):
         if cfg.data == 'voc':
             labpath = imgpath.replace('images', 'labels_1c/{}'.format(cls_name)) \
-                             .replace('JPEGImages', 'labels_1c/{}'.format(cls_name)) \
-                             .replace('.jpg', '.txt').replace('.png','.txt')
+                .replace('JPEGImages', 'labels_1c/{}'.format(cls_name)) \
+                .replace('.jpg', '.txt').replace('.png', '.txt')
         else:
             if 'train2014' in imgpath:
                 labpath = imgpath.replace('images/train2014', 'labels_1c/train2014/{}'.format(cls_name)) \
-                                 .replace('.jpg', '.txt').replace('.png','.txt')
+                    .replace('.jpg', '.txt').replace('.png', '.txt')
             elif 'val2014' in imgpath:
                 labpath = imgpath.replace('images/val2014', 'labels_1c/val2014/{}'.format(cls_name)) \
-                                 .replace('.jpg', '.txt').replace('.png','.txt')
+                    .replace('.jpg', '.txt').replace('.png', '.txt')
             else:
                 raise NotImplementedError("Image path note recognized!")
 
@@ -503,9 +515,9 @@ if __name__ == '__main__':
     netcfg = 'cfgs/dynamic_darknet_last.cfgs'
     metacfg = 'cfgs/learnet_last.cfgs'
 
-    data_options  = read_data_cfg(datacfg)
-    net_options   = parse_cfg(netcfg)[0]
-    meta_options  = parse_cfg(metacfg)[0]
+    data_options = read_data_cfg(datacfg)
+    net_options = parse_cfg(netcfg)[0]
+    meta_options = parse_cfg(metacfg)[0]
 
     cfg.config_data(data_options)
     cfg.config_meta(meta_options)
@@ -522,7 +534,7 @@ if __name__ == '__main__':
         shuffle=False,
         num_workers=0,
         pin_memory=True
-        )
+    )
 
     batch_size = 64
     kwargs = {'num_workers': 0, 'pin_memory': True}
@@ -541,9 +553,9 @@ if __name__ == '__main__':
     # for img, label, nums in train_loader:
     #     print(img.shape, label.shape, torch.sum(nums))
 
-    for img, mask in metaloader:
+    # for img, mask in metaloader:
         # pdb.set_trace()
-        print(img.shape, mask.shape)
+        # print(img.shape, mask.shape)
     # _metaloader = iter(metaloader)
     # for i in range(10):
     # i = 0

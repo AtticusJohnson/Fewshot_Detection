@@ -333,6 +333,19 @@ def _do_python_eval(_devkit_path, res_prefix, novel=False, output_dir = 'output'
 
 
 if __name__ == '__main__':
+    class Logger(object):
+        def __init__(self, filename='default.log', stream=sys.stdout):
+            self.terminal = stream
+            self.log = open(filename, 'w')
+
+        def write(self, message):
+            self.terminal.write(message)
+            self.log.write(message)
+
+        def flush(self):
+            pass
+    sys.stdout = Logger('results.log', sys.stdout)
+    sys.stderr = Logger('results.log_file', sys.stderr)
     #res_prefix = '/data/hongji/darknet/project/voc/results/comp4_det_test_'  
     parser = argparse.ArgumentParser()
     parser.add_argument('res_prefix', type=str)
@@ -340,7 +353,7 @@ if __name__ == '__main__':
     parser.add_argument('--single', action='store_true')  
     args = parser.parse_args()
     args.novel = True
-    voc_data_path = "/input/VOCdevkit"
+    voc_data_path = "voc/VOCdevkit"
     print(args.res_prefix)
     _do_python_eval(voc_data_path, args.res_prefix, novel=args.novel, output_dir = 'output')
 

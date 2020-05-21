@@ -95,7 +95,7 @@ def valid(datacfg, darknetcfg, learnetcfg, weightfile, outfile):
         for b in range(bs):
             lineId = lineId + 1
             imgpath = valid_dataset.lines[lineId].rstrip()
-            print(imgpath)
+            # print(imgpath)
             imgid = os.path.basename(imgpath).split('.')[0]
             width, height = get_image_size(imgpath)
             for i in range(n_cls):

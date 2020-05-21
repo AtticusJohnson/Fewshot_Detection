@@ -3,11 +3,19 @@
   <component name="WebServers">
     <option name="servers">
       <webServer id="f8825686-f24c-4384-ae3e-eeb50508b0f8" name="52CV" url="http://111.44.254.175">
-        <fileTransfer host="111.44.254.175" port="49997" rootFolder="/root/program" accessType="SFTP">
+        <fileTransfer host="111.44.254.175" port="47893" rootFolder="/root/program" accessType="SFTP">
           <advancedOptions>
             <advancedOptions dataProtectionLevel="Private" passiveMode="true" shareSSLContext="true" />
           </advancedOptions>
-          <option name="port" value="49997" />
+          <option name="port" value="47893" />
+        </fileTransfer>
+      </webServer>
+      <webServer id="772646cf-8b19-4299-a7b5-b0a1b6ac4c96" name="lab" url="http://160eed3b534f5094.natapp.cc">
+        <fileTransfer host="160eed3b534f5094.natapp.cc" port="65056" rootFolder="/home/atticus/Projects/Fewshot_Detection" accessType="SFTP">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" passiveMode="true" shareSSLContext="true" />
+          </advancedOptions>
+          <option name="port" value="65056" />
         </fileTransfer>
       </webServer>
     </option>

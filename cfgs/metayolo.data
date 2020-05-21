@@ -10,5 +10,5 @@ meta = data/voc_traindict_full.txt
 train = voc/voc_train.txt
 valid = voc/2007_test.txt
 backup = backup/metayolo
-gpus=0,1
-num_workers=4
+gpus=0,1,2
+num_workers=2

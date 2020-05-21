@@ -29,8 +29,8 @@ def convert(size, box):
     return (x,y,w,h)
 
 def convert_annotation(year, image_id, class_name):
-    in_file = open('VOCdevkit/VOC%s/Annotations/%s.xml'%(year, image_id))
-    out_file = open('VOCdevkit/VOC%s/labels_1c/%s/%s.txt'%(year, class_name, image_id), 'w')
+    in_file = open('voc/VOCdevkit/VOC%s/Annotations/%s.xml'%(year, image_id))
+    out_file = open('voc/VOCdevkit/VOC%s/labels_1c/%s/%s.txt'%(year, class_name, image_id), 'w')
     tree=ET.parse(in_file)
     root = tree.getroot()
     size = root.find('size')
@@ -52,36 +52,36 @@ def convert_annotation(year, image_id, class_name):
 
 wd = getcwd()
 
-if not os.path.exists('voclist'):
-    os.mkdir('voclist')
+if not os.path.exists('voc/voclist'):
+    os.mkdir('voc/voclist')
 
 for class_name in classes:
     for year, image_set in sets:
-        image_ids = open('VOCdevkit/VOC%s/ImageSets/Main/%s_%s.txt'%(year, class_name, image_set)).read().strip().split()
+        image_ids = open('voc/VOCdevkit/VOC%s/ImageSets/Main/%s_%s.txt'%(year, class_name, image_set)).read().strip().split()
         ids, flags = image_ids[::2], image_ids[1::2]
         image_ids = list(zip(ids, flags))
 
         # File to save the image path list
-        list_file = open('voclist/%s_%s_%s.txt'%(year, class_name, image_set), 'w')
+        list_file = open('voc/voclist/%s_%s_%s.txt'%(year, class_name, image_set), 'w')
 
         # File to save the image labels
         label_dir = 'labels_1c/' + class_name
-        if not os.path.exists('VOCdevkit/VOC%s/%s/'%(year, label_dir)):
-            os.makedirs('VOCdevkit/VOC%s/%s/'%(year, label_dir))
+        if not os.path.exists('voc/VOCdevkit/VOC%s/%s/'%(year, label_dir)):
+            os.makedirs('voc/VOCdevkit/VOC%s/%s/'%(year, label_dir))
 
         # Traverse all images
         for image_id, flag in image_ids:
             if int(flag) == -1:
                 continue
-            list_file.write('%s/VOCdevkit/VOC%s/JPEGImages/%s.jpg\n'%(wd, year, image_id))
+            list_file.write('%s/voc/VOCdevkit/VOC%s/JPEGImages/%s.jpg\n'%(wd, year, image_id))
             convert_annotation(year, image_id, class_name)
         list_file.close()
 
     files = [
-        'voclist/2007_{}_train.txt'.format(class_name),
-        'voclist/2007_{}_val.txt'.format(class_name),
-        'voclist/2012_{}_*.txt'.format(class_name)
+        'voc/voclist/2007_{}_train.txt'.format(class_name),
+        'voc/voclist/2007_{}_val.txt'.format(class_name),
+        'voc/voclist/2012_{}_*.txt'.format(class_name)
     ]
     files = ' '.join(files)
-    cmd = 'cat ' + files + '> voclist/{}_train.txt'.format(class_name)
+    cmd = 'cat ' + files + '> voc/voclist/{}_train.txt'.format(class_name)
     os.system(cmd)

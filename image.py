@@ -7,6 +7,7 @@ import numpy as np
 from PIL import Image
 from PIL import ImageFile
 from cfg import cfg
+import time
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 
@@ -236,12 +237,17 @@ def load_data_detection(imgpath, labpath, shape, jitter, hue, saturation, exposu
     # labpath = imgpath.replace('images', 'labels_1c/aeroplane').replace('JPEGImages', 'labels_1c/aeroplane').replace('.jpg', '.txt').replace('.png','.txt')
 
     ## data augmentation
+    # tt1 = time.time()
     img = Image.open(imgpath).convert('RGB')
+    # tt2 = time.time()
     img,flip,dx,dy,sx,sy = data_augmentation(img, shape, jitter, hue, saturation, exposure, flag=data_aug)
+    # tt3 = time.time()
     if cfg.metayolo:
         label = fill_truth_detection_meta(labpath, img.width, img.height, flip, dx, dy, 1./sx, 1./sy)
     else:
         label = fill_truth_detection(labpath, img.width, img.height, flip, dx, dy, 1./sx, 1./sy)
+    # tt4 = time.time()
+    # print(f'readimg:{tt2-tt1}; augu:{tt3-tt2}; fill:{tt4-tt3}')
     return img,label
 
 def load_data_with_label(imgpath, labpath, shape, jitter, hue, saturation, exposure, data_aug=True):
